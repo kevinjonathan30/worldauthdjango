@@ -16,7 +16,6 @@ def index(request):
 @csrf_exempt
 def authenticate(request):
     if request.method == 'POST':
-        print(len(request.FILES))
         if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 2:
             return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
