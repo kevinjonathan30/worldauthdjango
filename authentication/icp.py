@@ -27,7 +27,7 @@ import open3d as o3d  # Open3D ライブラリ (Library)
 import numpy as np  # NumPy ライブラリ (Library)
 
 def execute_icp(source, target):
-    threshold = 0.02
+    threshold = 0.7
     voxel_size = 0.1  # Means 10cm for this dataset
     
     # Remove outliers from the source and target point clouds
@@ -64,16 +64,6 @@ def execute_icp(source, target):
     print(reg_p2l_result.transformation)
     print("")
     return reg_p2l_result.fitness
-
-
-def display_inlier_outlier(cloud, ind):
-    inlier_cloud = cloud.select_by_index(ind)
-    outlier_cloud = cloud.select_by_index(ind, invert=True)
-
-    print("Showing outliers (red) and inliers (gray): ")
-    outlier_cloud.paint_uniform_color([1, 0, 0])
-    inlier_cloud.paint_uniform_color([0.8, 0.8, 0.8])
-    o3d.visualization.draw_geometries([inlier_cloud, outlier_cloud])
 
 # 点群データの前処理関数 (Preprocessing functions for point cloud data)
 def preprocess_point_cloud(pcd, voxel_size):
