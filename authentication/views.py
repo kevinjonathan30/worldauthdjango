@@ -13,6 +13,7 @@ def index(request):
     return HttpResponse("Hello, world. You're at the authentication index.")
 
 
+# curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-16.ply' http://127.0.0.1:8000/api/authenticate/
 @csrf_exempt
 def authenticate(request):
     if request.method == 'POST':
@@ -37,8 +38,8 @@ def authenticate(request):
         source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "plyFile.pcd")
         target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "plyFile1.pcd")
         result = icp.execute_icp(source, target)
-        if result > 0.95:
-            return JsonResponse({'result': True }, status=200)
-        return JsonResponse({'result': False }, status=200)
+        if result >= 0.95:
+            return JsonResponse({'success': True, 'fitness': result }, status=200)
+        return JsonResponse({'success': False, 'fitness': result }, status=200)
     
     return JsonResponse({'error': 'Invalid request'}, status=400)

@@ -27,7 +27,7 @@ import open3d as o3d  # Open3D ライブラリ (Library)
 import numpy as np  # NumPy ライブラリ (Library)
 
 def execute_icp(source, target):
-    threshold = 0.7
+    threshold = 0.25
     voxel_size = 0.1  # Means 10cm for this dataset
     
     # Remove outliers from the source and target point clouds

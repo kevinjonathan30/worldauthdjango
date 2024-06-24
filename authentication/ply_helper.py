@@ -55,5 +55,3 @@ def convert_ply_pcd(pcd, fileName):
     storage = OverwriteStorage()
     file_content = header + '\n' + '\n'.join(' '.join(map(str, row)) for row in pcd_array)
     storage.save(fileName, ContentFile(file_content))
-
-    # np.savetxt(settings.MEDIA_URL + fileName, pcd_array, header=header, comments='', fmt='%.8f')
