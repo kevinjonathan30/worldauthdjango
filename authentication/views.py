@@ -10,8 +10,23 @@ from authentication import ply_helper
 
 
 def index(request):
-    return HttpResponse("Hello, world. You're at the authentication index.")
+    return HttpResponse("GET OUT OF HERE.")
 
+def register(request):
+    if request.method == 'POST':
+        if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
+            return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
+        
+        files = request.FILES.getlist('files')
+        storage = OverwriteStorage()
+
+        try:
+            storage.save(files[0].name, ContentFile(files[0].read()))
+            return JsonResponse({'success': True }, status=200)
+        except:
+            return JsonResponse({'success': False, 'error': 'Failed to save file.' }, status=200)
+    
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 
 # curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-16.ply' http://127.0.0.1:8000/api/authenticate/
 @csrf_exempt
