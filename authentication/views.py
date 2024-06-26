@@ -7,10 +7,18 @@ from .storage import OverwriteStorage
 import open3d as o3d  # Open3D ライブラリ (Library)
 from authentication import icp # Iterative closest points
 from authentication import ply_helper
+import os
 
 
 def index(request):
     return HttpResponse("GET OUT OF HERE.")
+
+# curl -X GET http://127.0.0.1:8000/api/point_cloud/
+def get_point_cloud_data(request):
+    if request.method == 'GET':
+        pcd_list =os.listdir(settings.MEDIA_ACCESS_URL)
+        return JsonResponse({'success': True, 'data': pcd_list}, status=200)
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 
 # curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' http://127.0.0.1:8000/api/register/
 @csrf_exempt
