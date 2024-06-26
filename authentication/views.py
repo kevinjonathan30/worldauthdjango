@@ -12,6 +12,7 @@ from authentication import ply_helper
 def index(request):
     return HttpResponse("GET OUT OF HERE.")
 
+# curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' http://127.0.0.1:8000/api/register/
 def register(request):
     if request.method == 'POST':
         if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
@@ -22,37 +23,42 @@ def register(request):
 
         try:
             storage.save(files[0].name, ContentFile(files[0].read()))
+            source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + files[0].name)
+            ply_helper.convert_ply_pcd(source, "source.pcd")
+            
+            # Clear data after converting
+            storage.delete(files[0].name)
+
             return JsonResponse({'success': True }, status=200)
         except:
-            return JsonResponse({'success': False, 'error': 'Failed to save file.' }, status=200)
+            return JsonResponse({'success': False, 'error': 'Failed to register Point Cloud.' }, status=200)
     
-    return JsonResponse({'error': 'Invalid request'}, status=400)
+    return JsonResponse({'error': 'Invalid request.'}, status=400)
 
-# curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-16.ply' http://127.0.0.1:8000/api/authenticate/
+# curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-16.ply' http://127.0.0.1:8000/api/authenticate/
 @csrf_exempt
 def authenticate(request):
     if request.method == 'POST':
-        if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 2:
+        if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
             return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
         files = request.FILES.getlist('files')
-        file_urls = []
         storage = OverwriteStorage()
 
-        for file in files:
-            file_name = storage.save(file.name, ContentFile(file.read()))
-            file_url = settings.MEDIA_URL + file_name
-            file_urls.append(file_url)
+        storage.save(files[0].name, ContentFile(files[0].read()))
 
         # Convert to PCD first
-        source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + files[0].name)
-        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + files[1].name)
-        ply_helper.convert_ply_pcd(source, "plyFile.pcd")
-        ply_helper.convert_ply_pcd(target, "plyFile1.pcd")  
+        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + files[0].name)
+        ply_helper.convert_ply_pcd(target, "target.pcd")
         # 入力データ (Input data)
-        source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "plyFile.pcd")
-        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "plyFile1.pcd")
+        source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "source.pcd")
+        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "target.pcd")
         result = icp.execute_icp(source, target)
+
+        # Clear data after authenticating
+        storage.delete(files[0].name)
+        storage.delete("target.pcd")
+
         if result >= 0.95:
             return JsonResponse({'success': True, 'fitness': result }, status=200)
         return JsonResponse({'success': False, 'fitness': result }, status=200)
