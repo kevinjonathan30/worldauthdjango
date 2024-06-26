@@ -13,6 +13,7 @@ def index(request):
     return HttpResponse("GET OUT OF HERE.")
 
 # curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' http://127.0.0.1:8000/api/register/
+@csrf_exempt
 def register(request):
     if request.method == 'POST':
         if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
