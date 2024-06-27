@@ -23,7 +23,7 @@ def compute_curvature(pcd, k=30):
 
     return np.array(curvatures)
 
-def convert_ply_pcd(pcd, fileName):
+def convert_ply_pcd(pcd, fileName, authorization):
     # Estimate normals if not provided
     if not pcd.has_normals():
         pcd.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
@@ -54,4 +54,4 @@ def convert_ply_pcd(pcd, fileName):
     # Save the PCD file with curvature
     storage = OverwriteStorage()
     file_content = header + '\n' + '\n'.join(' '.join(map(str, row)) for row in pcd_array)
-    storage.save(fileName, ContentFile(file_content))
+    storage.save(authorization + "/" + fileName, ContentFile(file_content))
