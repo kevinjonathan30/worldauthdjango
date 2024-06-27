@@ -172,4 +172,4 @@ zipp = "==3.19.2"
 [dev-packages]
 
 [requires]
-python_version = "3.12"
+python_version = "3.9"
