@@ -14,10 +14,25 @@ def index(request):
     return HttpResponse("GET OUT OF HERE.")
 
 # curl -X GET http://127.0.0.1:8000/api/point_cloud/
-def get_point_cloud_data(request):
+@csrf_exempt
+def get_point_cloud(request):
     if request.method == 'GET':
         pcd_list =os.listdir(settings.MEDIA_ACCESS_URL)
         return JsonResponse({'success': True, 'data': pcd_list}, status=200)
+    return JsonResponse({'error': 'Invalid request'}, status=400)
+
+@csrf_exempt
+def delete_point_cloud(request, filename=None):
+    if request.method == 'DELETE':
+        if filename == None:
+            return JsonResponse({'error': 'Invalid filename'}, status=400)
+    
+        storage = OverwriteStorage()
+        try:
+            storage.delete(filename)
+            return JsonResponse({'success': True}, status=200)
+        except:
+            return JsonResponse({'success': False, 'error': 'Failed to delete Point Cloud.' }, status=200)
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
 # curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' http://127.0.0.1:8000/api/register/
@@ -56,17 +71,20 @@ def authenticate(request):
 
         storage.save(files[0].name, ContentFile(files[0].read()))
 
-        # Convert to PCD first
-        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + files[0].name)
-        ply_helper.convert_ply_pcd(target, "target.pcd")
-        # 入力データ (Input data)
-        source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "source.pcd")
-        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "target.pcd")
-        result = icp.execute_icp(source, target)
-
-        # Clear data after authenticating
-        storage.delete(files[0].name)
-        storage.delete("target.pcd")
+        try:
+            # Convert to PCD first
+            target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + files[0].name)
+            ply_helper.convert_ply_pcd(target, "target.pcd")
+            # 入力データ (Input data)
+            source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "source.pcd")
+            target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + "target.pcd")
+            result = icp.execute_icp(source, target)
+        except:
+            return JsonResponse({'error': 'No registered point cloud.'}, status=400)
+        finally:
+            # Clear data after authenticating
+            storage.delete(files[0].name)
+            storage.delete("target.pcd")
 
         if result >= 0.95:
             return JsonResponse({'success': True, 'fitness': result }, status=200)
