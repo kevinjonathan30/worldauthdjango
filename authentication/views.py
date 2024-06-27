@@ -8,6 +8,7 @@ import open3d as o3d  # Open3D ライブラリ (Library)
 from authentication import icp # Iterative closest points
 from authentication import ply_helper
 import os
+from datetime import datetime
 
 
 def index(request):
@@ -55,11 +56,11 @@ def register(request):
         storage = OverwriteStorage()
 
         try:
-            storage.save(authorization + "/" + files[0].name, ContentFile(files[0].read()))
-            source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + files[0].name)
-            ply_helper.convert_ply_pcd(source, "source.pcd", authorization)
+            fileName = storage.save(authorization + "/" + datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".ply", ContentFile(files[0].read()))
+            source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
+            ply_helper.convert_ply_pcd(source, datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".pcd", authorization)
             # Clear data after converting
-            storage.delete(authorization + "/" + files[0].name)
+            storage.delete(fileName)
 
             return JsonResponse({'success': True }, status=200)
         except:
@@ -78,25 +79,31 @@ def authenticate(request):
         files = request.FILES.getlist('files')
         storage = OverwriteStorage()
 
-        storage.save(authorization + "/" + files[0].name, ContentFile(files[0].read()))
+        fileName = storage.save(authorization + "/" + files[0].name, ContentFile(files[0].read()))
+        # Convert to PCD first
+        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
+        ply_helper.convert_ply_pcd(target, "target.pcd", authorization)
 
         try:
-            # Convert to PCD first
-            target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + files[0].name)
-            ply_helper.convert_ply_pcd(target, "target.pcd", authorization)
-            # 入力データ (Input data)
-            source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + "source.pcd")
-            target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + "target.pcd")
-            result = icp.execute_icp(source, target)
+            highestResult = 0
+            for file in os.listdir(settings.MEDIA_ACCESS_URL + authorization):
+                if file == "target.pcd" or file == "target.ply":
+                    continue
+                # 入力データ (Input data)
+                source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + file)
+                target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + "target.pcd")
+                result = icp.execute_icp(source, target)
+                if result > highestResult:
+                    highestResult = result
+
+            if highestResult >= 0.95:
+                return JsonResponse({'success': True, 'fitness': highestResult }, status=200)
+            return JsonResponse({'success': False, 'fitness': highestResult }, status=200)
         except:
             return JsonResponse({'error': 'No registered point cloud.'}, status=400)
         finally:
             # Clear data after authenticating
             storage.delete(authorization + "/" + files[0].name)
             storage.delete(authorization + "/" + "target.pcd")
-
-        if result >= 0.95:
-            return JsonResponse({'success': True, 'fitness': result }, status=200)
-        return JsonResponse({'success': False, 'fitness': result }, status=200)
     
     return JsonResponse({'error': 'Invalid request'}, status=400)
