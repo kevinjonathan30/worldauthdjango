@@ -27,7 +27,7 @@ import open3d as o3d  # Open3D ライブラリ (Library)
 import numpy as np  # NumPy ライブラリ (Library)
 
 def execute_icp(source, target):
-    threshold = 0.25
+    threshold = 0.7
     voxel_size = 0.1  # Means 10cm for this dataset
     
     # Remove outliers from the source and target point clouds
@@ -38,24 +38,23 @@ def execute_icp(source, target):
 
     # グローバルレジストレーション（RANSAC Global Registration）
     print("Initial alignment with RANSAC")
-    result_ransac = execute_global_registration(source_down, target_down,
+    result = execute_global_registration(source_down, target_down,
                                                 source_fpfh, target_fpfh,
                                                 voxel_size)
     
-    # result_fast = execute_fast_global_registration(source_down, target_down,
+    # result = execute_fast_global_registration(source_down, target_down,
                                                     # source_fpfh, target_fpfh,
                                                     # voxel_size)
 
-    trans_init = result_ransac.transformation
+    trans_init = result.transformation
     evaluation = o3d.pipelines.registration.evaluate_registration(source, target,
                                                         threshold, trans_init)
     print(evaluation)
 
     # Point-to-plain ICP
     print("Now, applying the point-to-plane ICP")
-    loss = o3d.pipelines.registration.TukeyLoss(k=0.1)
-    print("Using robust loss:", loss)
-    p2l = o3d.pipelines.registration.TransformationEstimationPointToPlane(loss)
+
+    p2l = o3d.pipelines.registration.TransformationEstimationPointToPlane()
     reg_p2l_result = o3d.pipelines.registration.registration_icp(
         source, target, threshold, trans_init, p2l)
 
