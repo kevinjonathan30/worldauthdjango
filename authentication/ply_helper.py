@@ -2,7 +2,6 @@ import open3d as o3d
 import numpy as np
 from django.core.files.base import ContentFile
 from .storage import OverwriteStorage
-from django.core.files import File
 
 def compute_curvature(pcd, k=30):
     # Compute the curvature of each point in the point cloud
