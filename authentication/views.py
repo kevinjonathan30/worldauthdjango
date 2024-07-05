@@ -58,7 +58,7 @@ def register(request):
         try:
             fileName = storage.save(authorization + "/" + datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".ply", ContentFile(files[0].read()))
             source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
-            ply_helper.convert_ply_pcd(source, datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".pcd", authorization)
+            ply_helper.convert_ply_pcd(source, "Room" + datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".pcd", authorization)
             # Clear data after converting
             storage.delete(fileName)
 
