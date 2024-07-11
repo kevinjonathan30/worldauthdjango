@@ -56,9 +56,9 @@ def register(request):
         storage = OverwriteStorage()
 
         try:
-            fileName = storage.save(authorization + "/" + datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".ply", ContentFile(files[0].read()))
+            fileName = storage.save(authorization + "/source.ply", ContentFile(files[0].read()))
             source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
-            ply_helper.convert_ply_pcd(source, "Room" + datetime.now().strftime("%m-%d-%Y,%H:%M:%S") + ".pcd", authorization)
+            ply_helper.convert_ply_pcd(source, "Room_1.pcd", authorization)
             # Clear data after converting
             storage.delete(fileName)
 
@@ -91,12 +91,12 @@ def authenticate(request):
                     continue
                 # 入力データ (Input data)
                 source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + file)
-                target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + "target.pcd")
+                target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/target.pcd")
                 result = icp.execute_icp(source, target)
                 if result > highestResult:
                     highestResult = result
 
-            if highestResult >= 0.95:
+            if highestResult == 1:
                 return JsonResponse({'success': True, 'fitness': highestResult }, status=200)
             return JsonResponse({'success': False, 'fitness': highestResult }, status=200)
         except:
@@ -104,6 +104,6 @@ def authenticate(request):
         finally:
             # Clear data after authenticating
             storage.delete(authorization + "/" + files[0].name)
-            storage.delete(authorization + "/" + "target.pcd")
+            storage.delete(authorization + "/target.pcd")
     
     return JsonResponse({'error': 'Invalid request'}, status=400)
