@@ -55,10 +55,31 @@ def register(request):
         files = request.FILES.getlist('files')
         storage = OverwriteStorage()
 
+        room_sequence = ["Room_1.pcd", "Room_2.pcd", "Room_3.pcd"]
+        try:
+            pcd_list = os.listdir(settings.MEDIA_ACCESS_URL + authorization)
+            rooms_present = {room: room in pcd_list for room in room_sequence}
+        except:
+            rooms_present = {room: False for room in room_sequence}
+            
+            # Determine the next room to add
+        if not rooms_present["Room_1.pcd"]:
+            next_room = "Room_1.pcd"
+        elif not rooms_present["Room_2.pcd"]:
+            next_room = "Room_2.pcd"
+        elif not rooms_present["Room_3.pcd"]:
+            next_room = "Room_3.pcd"
+        else:
+            next_room = None
+            
+        # Add the next room if necessary
+        if next_room is None:
+            return JsonResponse({'success': False, 'error': 'Exceeded registration limit.' }, status=200)
+        
         try:
             fileName = storage.save(authorization + "/source.ply", ContentFile(files[0].read()))
             source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
-            ply_helper.convert_ply_pcd(source, "Room_1.pcd", authorization)
+            ply_helper.convert_ply_pcd(source, next_room, authorization)
             # Clear data after converting
             storage.delete(fileName)
 
