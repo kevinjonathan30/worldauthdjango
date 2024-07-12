@@ -28,15 +28,16 @@ def get_point_cloud(request):
 
 # curl -X DELETE http://127.0.0.1:8000/api/delete_point_cloud/
 @csrf_exempt
-def delete_point_cloud(request, filename=None):
+def delete_point_cloud(request):
     if request.method == 'DELETE':
         authorization = request.headers.get('Authorization')
-        if filename == None:
+        fileRequest = request.headers.get('FileRequest')
+        if fileRequest == None:
             return JsonResponse({'error': 'Invalid filename'}, status=400)
     
         storage = OverwriteStorage()
         try:
-            storage.delete(authorization + "/" + filename)
+            storage.delete(authorization + "/" + fileRequest)
             if len(os.listdir(settings.MEDIA_ACCESS_URL + authorization)) == 0:
                 storage.delete(authorization)
             return JsonResponse({'success': True}, status=200)
