@@ -56,7 +56,7 @@ def register(request):
         files = request.FILES.getlist('files')
         storage = OverwriteStorage()
 
-        room_sequence = ["Room_1.pcd", "Room_2.pcd", "Room_3.pcd"]
+        room_sequence = ["Room_1.ply", "Room_2.ply", "Room_3.ply"]
         try:
             pcd_list = os.listdir(settings.MEDIA_ACCESS_URL + authorization)
             rooms_present = {room: room in pcd_list for room in room_sequence}
@@ -64,12 +64,12 @@ def register(request):
             rooms_present = {room: False for room in room_sequence}
             
             # Determine the next room to add
-        if not rooms_present["Room_1.pcd"]:
-            next_room = "Room_1.pcd"
-        elif not rooms_present["Room_2.pcd"]:
-            next_room = "Room_2.pcd"
-        elif not rooms_present["Room_3.pcd"]:
-            next_room = "Room_3.pcd"
+        if not rooms_present["Room_1.ply"]:
+            next_room = "Room_1.ply"
+        elif not rooms_present["Room_2.ply"]:
+            next_room = "Room_2.ply"
+        elif not rooms_present["Room_3.ply"]:
+            next_room = "Room_3.ply"
         else:
             next_room = None
             
@@ -78,11 +78,11 @@ def register(request):
             return JsonResponse({'success': False, 'error': 'Exceeded registration limit.' }, status=200)
         
         try:
-            fileName = storage.save(authorization + "/source.ply", ContentFile(files[0].read()))
-            source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
-            ply_helper.convert_ply_pcd(source, next_room, authorization)
+            fileName = storage.save(authorization + "/" + next_room, ContentFile(files[0].read()))
+            # source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
+            # ply_helper.convert_ply_pcd(source, next_room, authorization)
             # Clear data after converting
-            storage.delete(fileName)
+            # storage.delete(fileName)
 
             return JsonResponse({'success': True }, status=200)
         except:
@@ -104,7 +104,7 @@ def authenticate(request):
         fileName = storage.save(authorization + "/" + files[0].name, ContentFile(files[0].read()))
         # Convert to PCD first
         target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + fileName)
-        ply_helper.convert_ply_pcd(target, "target.pcd", authorization)
+        # ply_helper.convert_ply_pcd(target, "target.pcd", authorization)
 
         try:
             highestResult = 0
@@ -113,7 +113,7 @@ def authenticate(request):
                     continue
                 # 入力データ (Input data)
                 source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + file)
-                target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/target.pcd")
+                target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/target.ply")
                 result = icp.execute_icp(source, target)
                 if result > highestResult:
                     highestResult = result
@@ -125,7 +125,7 @@ def authenticate(request):
             return JsonResponse({'error': 'No registered point cloud.'}, status=400)
         finally:
             # Clear data after authenticating
-            storage.delete(authorization + "/" + files[0].name)
-            storage.delete(authorization + "/target.pcd")
+            # storage.delete(authorization + "/" + files[0].name)
+            storage.delete(authorization + "/target.ply")
     
     return JsonResponse({'error': 'Invalid request'}, status=400)
