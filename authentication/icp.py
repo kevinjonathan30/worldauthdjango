@@ -26,25 +26,32 @@
 import open3d as o3d  # Open3D ライブラリ (Library)
 import numpy as np  # NumPy ライブラリ (Library)
 
-def execute_icp(source, target):
+def execute_icp(source, target, fastRegistration=False):
     threshold = 0.7
     voxel_size = 0.1  # Means 10cm for this dataset
     
     # Remove outliers from the source and target point clouds
-    # source, _ = remove_outlier(source)
-    # target, _ = remove_outlier(target)
+    source, _ = remove_outlier(source)
+    target, _ = remove_outlier(target)
+
+    source.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    source.orient_normals_consistent_tangent_plane(100)
+
+    target.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
+    target.orient_normals_consistent_tangent_plane(100)
     
     source_down, target_down, source_fpfh, target_fpfh = prepare_dataset(voxel_size, source, target)
 
-    # グローバルレジストレーション（RANSAC Global Registration）
-    print("Initial alignment with RANSAC")
-    result = execute_global_registration(source_down, target_down,
-                                                source_fpfh, target_fpfh,
-                                                voxel_size)
-    
-    # result = execute_fast_global_registration(source_down, target_down,
-                                                    # source_fpfh, target_fpfh,
-                                                    # voxel_size)
+    if fastRegistration == True:
+        # グローバルレジストレーション（RANSAC Global Registration）
+        print("Initial alignment with RANSAC")
+        result = execute_global_registration(source_down, target_down,
+                                            source_fpfh, target_fpfh,
+                                            voxel_size)
+    else:
+        result = execute_fast_global_registration(source_down, target_down,
+                                                 source_fpfh, target_fpfh,
+                                                 voxel_size)
 
     trans_init = result.transformation
     evaluation = o3d.pipelines.registration.evaluate_registration(source, target,
@@ -55,11 +62,6 @@ def execute_icp(source, target):
     print("Now, applying the point-to-plane ICP")
 
     try:
-        source.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-        source.orient_normals_consistent_tangent_plane(100)
-
-        target.estimate_normals(search_param=o3d.geometry.KDTreeSearchParamHybrid(radius=0.1, max_nn=30))
-        target.orient_normals_consistent_tangent_plane(100)
         p2l = o3d.pipelines.registration.TransformationEstimationPointToPlane()
         reg_p2l_result = o3d.pipelines.registration.registration_icp(
         source, target, threshold, trans_init, p2l)
