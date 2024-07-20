@@ -1,5 +1,4 @@
-from django.http import HttpResponse
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.base import ContentFile
 from django.conf import settings
@@ -7,7 +6,9 @@ from .storage import OverwriteStorage
 import open3d as o3d  # Open3D ライブラリ (Library)
 from authentication import icp # Iterative closest points
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 def index(request):
     return HttpResponse("GET OUT OF HERE.")
@@ -17,10 +18,14 @@ def index(request):
 def get_point_cloud(request):
     if request.method == 'GET':
         authorization = request.headers.get('Authorization')
+        if not authorization:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
+        
         try:
-            pcd_list = os.listdir(settings.MEDIA_ACCESS_URL + authorization)
+            pcd_list = os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization))
             return JsonResponse({'success': True, 'data': pcd_list}, status=200)
-        except:
+        except Exception as e:
+            logger.error(f"Failed to list point clouds: {e}")
             return JsonResponse({'success': True, 'data': []}, status=200)
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
@@ -29,92 +34,99 @@ def get_point_cloud(request):
 def delete_point_cloud(request):
     if request.method == 'DELETE':
         authorization = request.headers.get('Authorization')
-        fileRequest = request.headers.get('FileRequest')
-        if fileRequest == None:
+        file_request = request.headers.get('FileRequest')
+        
+        if not authorization:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
+        if not file_request:
             return JsonResponse({'error': 'Invalid filename'}, status=400)
-    
+        
         storage = OverwriteStorage()
         try:
-            storage.delete(authorization + "/" + fileRequest)
-            if len(os.listdir(settings.MEDIA_ACCESS_URL + authorization)) == 0:
+            storage.delete(os.path.join(authorization, file_request))
+            remaining_files = os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization))
+            if not remaining_files:
                 storage.delete(authorization)
             return JsonResponse({'success': True}, status=200)
-        except:
-            return JsonResponse({'success': False, 'error': 'Failed to delete Point Cloud.' }, status=200)
+        except Exception as e:
+            logger.error(f"Failed to delete point cloud: {e}")
+            return JsonResponse({'success': False, 'error': 'Failed to delete Point Cloud.'}, status=500)
     return JsonResponse({'error': 'Invalid request'}, status=400)
 
-# curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-00.ply' http://127.0.0.1:8000/api/register/
+# curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/register/
 @csrf_exempt
 def register(request):
     if request.method == 'POST':
         authorization = request.headers.get('Authorization')
+        
+        if not authorization:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
         if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
             return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
         files = request.FILES.getlist('files')
         storage = OverwriteStorage()
-
         room_sequence = ["Room_1.ply", "Room_2.ply", "Room_3.ply"]
-        try:
-            pcd_list = os.listdir(settings.MEDIA_ACCESS_URL + authorization)
-            rooms_present = {room: room in pcd_list for room in room_sequence}
-        except:
-            rooms_present = {room: False for room in room_sequence}
-            
-            # Determine the next room to add
-        if not rooms_present["Room_1.ply"]:
-            next_room = "Room_1.ply"
-        elif not rooms_present["Room_2.ply"]:
-            next_room = "Room_2.ply"
-        elif not rooms_present["Room_3.ply"]:
-            next_room = "Room_3.ply"
-        else:
-            next_room = None
-            
-        # Add the next room if necessary
-        if next_room is None:
-            return JsonResponse({'success': False, 'error': 'Exceeded registration limit.' }, status=200)
         
         try:
-            storage.save(authorization + "/" + next_room, ContentFile(files[0].read()))
-
-            return JsonResponse({'success': True }, status=200)
-        except:
-            return JsonResponse({'success': False, 'error': 'Failed to register Point Cloud.' }, status=200)
+            pcd_list = os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization))
+            rooms_present = {room: room in pcd_list for room in room_sequence}
+        except Exception as e:
+            logger.error(f"Failed to list rooms: {e}")
+            rooms_present = {room: False for room in room_sequence}
+        
+        next_room = None
+        for room in room_sequence:
+            if not rooms_present[room]:
+                next_room = room
+                break
+        
+        if not next_room:
+            return JsonResponse({'success': False, 'error': 'Exceeded registration limit.'}, status=400)
+        
+        try:
+            storage.save(os.path.join(authorization, next_room), ContentFile(files[0].read()))
+            return JsonResponse({'success': True}, status=200)
+        except Exception as e:
+            logger.error(f"Failed to register point cloud: {e}")
+            return JsonResponse({'success': False, 'error': 'Failed to register Point Cloud.'}, status=500)
     
-    return JsonResponse({'error': 'Invalid request.'}, status=400)
+    return JsonResponse({'error': 'Invalid request'}, status=400)
 
-# curl -X POST -F 'files=@/Users/kevinjonathan/Downloads/PointCloud_0006-06-19-15-20-16.ply' http://127.0.0.1:8000/api/authenticate/
+# curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/authenticate/
 @csrf_exempt
 def authenticate(request):
     if request.method == 'POST':
         authorization = request.headers.get('Authorization')
+        
+        if not authorization:
+            return JsonResponse({'error': 'Unauthorized'}, status=401)
         if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
             return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
         files = request.FILES.getlist('files')
         storage = OverwriteStorage()
-
-        storage.save(authorization + "/target.ply", ContentFile(files[0].read()))
-        target = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/target.ply")
-
+        target_file_path = os.path.join(authorization, "target.ply")
+        
         try:
-            highestResult = 0
-            for file in os.listdir(settings.MEDIA_ACCESS_URL + authorization):
+            storage.save(target_file_path, ContentFile(files[0].read()))
+            target = o3d.io.read_point_cloud(os.path.join(settings.MEDIA_ACCESS_URL, target_file_path))
+            
+            highest_result = 0
+            for file in os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization)):
                 if file == "target.ply":
                     continue
-                # 入力データ (Input data)
-                source = o3d.io.read_point_cloud(settings.MEDIA_ACCESS_URL + authorization + "/" + file)
+                source = o3d.io.read_point_cloud(os.path.join(settings.MEDIA_ACCESS_URL, authorization, file))
                 result = icp.execute_icp(source, target)
-                if result > highestResult:
-                    highestResult = result
-
-            if highestResult == 1:
-                return JsonResponse({'success': True, 'fitness': highestResult }, status=200)
-            return JsonResponse({'success': False, 'fitness': highestResult }, status=200)
-        except:
+                highest_result = max(highest_result, result)
+            
+            if highest_result == 1:
+                return JsonResponse({'success': True, 'fitness': highest_result}, status=200)
+            return JsonResponse({'success': False, 'fitness': highest_result}, status=200)
+        except Exception as e:
+            logger.error(f"Authentication failed: {e}")
             return JsonResponse({'error': 'No registered point cloud.'}, status=400)
         finally:
-            storage.delete(authorization + "/target.ply")
+            storage.delete(target_file_path)
     
     return JsonResponse({'error': 'Invalid request'}, status=400)
