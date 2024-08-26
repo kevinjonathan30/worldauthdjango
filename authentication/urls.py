@@ -8,4 +8,5 @@ urlpatterns = [
     path("delete_point_cloud/", views.delete_point_cloud, name="delete_point_cloud"),
     path('register/', views.register, name="register"),
     path('authenticate/', views.authenticate, name="authenticate"),
+    path('collect/', views.collect, name="collect"),
 ]
