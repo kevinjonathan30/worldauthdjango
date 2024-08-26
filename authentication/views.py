@@ -6,6 +6,7 @@ from .storage import OverwriteStorage
 import open3d as o3d  # Open3D ライブラリ (Library)
 from authentication.icp import icp # Iterative closest points
 from authentication.pointnetlk import pointnetlk # PointNetLK
+from authentication.fmr import fmr # PointNetLK
 import os
 import logging
 from datetime import datetime
@@ -105,7 +106,7 @@ def authenticate(request):
         return JsonResponse({'error': 'Invalid request'}, status=400)
     
     authorization = request.headers.get('Authorization')
-    method = 'PNLK' # ICP | FGR | PNLK | FMR | DGMR
+    method = 'FMR' # ICP | FGR | PNLK | FMR | DGMR
         
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
@@ -132,6 +133,8 @@ def authenticate(request):
                 result = icp.execute_icp(source, target, fast_registration=True)
             elif method == 'PNLK':
                 result = pointnetlk.execute_pointnetlk(source, target)
+            elif method == 'FMR':
+                result = fmr.execute_fmr(source, target)
             highest_result = max(highest_result, result)
             
         if highest_result == 1:
