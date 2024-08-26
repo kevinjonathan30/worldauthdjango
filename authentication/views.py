@@ -6,7 +6,8 @@ from .storage import OverwriteStorage
 import open3d as o3d  # Open3D ライブラリ (Library)
 from authentication.icp import icp # Iterative closest points
 from authentication.pointnetlk import pointnetlk # PointNetLK
-from authentication.fmr import fmr # PointNetLK
+from authentication.fmr import fmr # FMR
+from authentication.deepgmr import deepgmr # DeepGMR
 import os
 import logging
 from datetime import datetime
@@ -106,7 +107,7 @@ def authenticate(request):
         return JsonResponse({'error': 'Invalid request'}, status=400)
     
     authorization = request.headers.get('Authorization')
-    method = 'FMR' # ICP | FGR | PNLK | FMR | DGMR
+    method = 'DGMR' # ICP | FGR | PNLK | FMR | DGMR
         
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
@@ -135,6 +136,10 @@ def authenticate(request):
                 result = pointnetlk.execute_pointnetlk(source, target)
             elif method == 'FMR':
                 result = fmr.execute_fmr(source, target)
+            elif method == 'DGMR':
+                result = deepgmr.execute_deepgmr(source, target)
+            else:
+                return JsonResponse({'error': 'Invalid registration method.'}, status=400)
             highest_result = max(highest_result, result)
             
         if highest_result == 1:
