@@ -5,6 +5,7 @@ from django.conf import settings
 from .storage import OverwriteStorage
 import open3d as o3d  # Open3D ライブラリ (Library)
 from authentication.icp import icp # Iterative closest points
+from authentication.pointnetlk import pointnetlk # PointNetLK
 import os
 import logging
 from datetime import datetime
@@ -104,7 +105,7 @@ def authenticate(request):
         return JsonResponse({'error': 'Invalid request'}, status=400)
     
     authorization = request.headers.get('Authorization')
-    method = 'ICP' # ICP | FGR | PNLK | FMR | DGMR
+    method = 'PNLK' # ICP | FGR | PNLK | FMR | DGMR
         
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
@@ -113,18 +114,24 @@ def authenticate(request):
         
     files = request.FILES.getlist('files')
     storage = OverwriteStorage()
-    target_file_path = os.path.join(authorization, "target.ply")
+    source_file_path = os.path.join(authorization, "source.ply")
         
     try:
-        storage.save(target_file_path, ContentFile(files[0].read()))
-        target = o3d.io.read_point_cloud(os.path.join(settings.MEDIA_ACCESS_URL, target_file_path))
+        storage.save(source_file_path, ContentFile(files[0].read()))
+        source = os.path.join(settings.MEDIA_ACCESS_URL, source_file_path)
             
         highest_result = 0
         for file in os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization)):
-            if file == "target.ply":
+            if file == "source.ply":
                 continue
-            source = o3d.io.read_point_cloud(os.path.join(settings.MEDIA_ACCESS_URL, authorization, file))
-            result = icp.execute_icp(source, target)
+            target = os.path.join(settings.MEDIA_ACCESS_URL, authorization, file)
+
+            if method == 'ICP':
+                result = icp.execute_icp(source, target)
+            elif method == 'FGR':
+                result = icp.execute_icp(source, target, fast_registration=True)
+            elif method == 'PNLK':
+                result = pointnetlk.execute_pointnetlk(source, target)
             highest_result = max(highest_result, result)
             
         if highest_result == 1:
@@ -134,7 +141,7 @@ def authenticate(request):
         logger.error(f"Authentication failed: {e}")
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
     finally:
-        storage.delete(target_file_path)
+        storage.delete(source_file_path)
 
 
 # curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/collect/
