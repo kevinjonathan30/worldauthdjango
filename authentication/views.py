@@ -2,15 +2,16 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.base import ContentFile
 from django.conf import settings
+from .models import AuthenticationMethod
 from .storage import OverwriteStorage
-import open3d as o3d  # Open3D ライブラリ (Library)
-from authentication.icp import icp # Iterative closest points
-from authentication.pointnetlk import pointnetlk # PointNetLK
-from authentication.fmr import fmr # FMR
-from authentication.deepgmr import deepgmr # DeepGMR
+from authentication.icp import icp
+from authentication.pointnetlk import pointnetlk 
+from authentication.fmr import fmr 
+from authentication.deepgmr import deepgmr 
 import os
 import logging
 from datetime import datetime
+from time import time
 
 
 logger = logging.getLogger(__name__)
@@ -107,12 +108,14 @@ def authenticate(request):
         return JsonResponse({'error': 'Invalid request'}, status=400)
     
     authorization = request.headers.get('Authorization')
-    method = 'DGMR' # ICP | FGR | PNLK | FMR | DGMR
         
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
     if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
         return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
+    
+    method = AuthenticationMethod.FMR
+    start = time()
         
     files = request.FILES.getlist('files')
     storage = OverwriteStorage()
@@ -128,20 +131,26 @@ def authenticate(request):
                 continue
             target = os.path.join(settings.MEDIA_ACCESS_URL, authorization, file)
 
-            if method == 'ICP':
+            if method == AuthenticationMethod.ICP:
+                print("Using ICP Point-to-Plane & RANSAC")
                 result = icp.execute_icp(source, target)
-            elif method == 'FGR':
+            elif method == AuthenticationMethod.FGR:
+                print("Using Fast Global Registration")
                 result = icp.execute_icp(source, target, fast_registration=True)
-            elif method == 'PNLK':
+            elif method == AuthenticationMethod.PNLK:
+                print("Using PointNetLK")
                 result = pointnetlk.execute_pointnetlk(source, target)
-            elif method == 'FMR':
+            elif method == AuthenticationMethod.FMR:
+                print("Using Feature-metric Registration")
                 result = fmr.execute_fmr(source, target)
-            elif method == 'DGMR':
+            elif method == AuthenticationMethod.DGMR:
+                print("Using DeepGMR")
                 result = deepgmr.execute_deepgmr(source, target)
-            else:
-                return JsonResponse({'error': 'Invalid registration method.'}, status=400)
+            
             highest_result = max(highest_result, result)
             
+        authentication_time = time() - start
+        print(f'Authentication time: {authentication_time}')
         if highest_result == 1:
             return JsonResponse({'success': True, 'fitness': highest_result}, status=200)
         return JsonResponse({'success': False, 'fitness': highest_result}, status=200)
@@ -170,6 +179,7 @@ def collect(request):
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
+    dt_string = dt_string + ".ply"
         
     try:
         storage.save(os.path.join(authorization, dt_string), ContentFile(files[0].read()))

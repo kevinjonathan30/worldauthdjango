@@ -1,9 +1,9 @@
 import open3d as o3d
-import argparse
 import os
 import torch
 import numpy as np
 from .model import PointLK, PointNet_features
+from django.conf import settings
 
 def load_ply_file(filepath):
     pcd = o3d.io.read_point_cloud(filepath)
@@ -52,8 +52,8 @@ def options():
         max_iter = 10
         delta = 1.0e-2
         learn_delta = False
-        pretrained = ''
-        device = 'cuda:0'
+        pretrained = os.path.join(settings.BASE_DIR, "authentication", "pointnetlk", "pretrained", "best_model.t7")
+        device = 'cpu'
 
     return Args()
 

@@ -12,7 +12,6 @@ import torch.utils.data
 import logging
 import numpy as np
 from .model import PointNet, Decoder, SolveRegistration
-from .se_math import transforms
 import open3d as o3d
 from django.conf import settings
 
