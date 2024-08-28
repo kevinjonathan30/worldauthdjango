@@ -180,8 +180,7 @@ def collect(request):
     files = request.FILES.getlist('files')
 
     now = datetime.now()
-    dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
-    dt_string = dt_string + ".ply"
+    dt_string = now.strftime("%d-%m-%Y-%H-%M-%S") + ".ply"
         
     try:
         file_path = os.path.join(settings.MEDIA_ROOT, authorization, dt_string)
