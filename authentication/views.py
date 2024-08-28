@@ -8,6 +8,7 @@ from authentication.icp import icp
 from authentication.pointnetlk import pointnetlk 
 from authentication.fmr import fmr 
 from authentication.deepgmr import deepgmr 
+from authentication.helper import write_point_cloud
 import os
 import logging
 from datetime import datetime
@@ -48,7 +49,7 @@ def delete_point_cloud(request):
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
     if not file_request:
-        return JsonResponse({'error': 'Invalid filename'}, status=400)
+        return JsonResponse({'error': 'Invalid/No filename'}, status=400)
         
     storage = OverwriteStorage()
     try:
@@ -75,7 +76,6 @@ def register(request):
         return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
     files = request.FILES.getlist('files')
-    storage = OverwriteStorage()
     room_sequence = ["Room_1.ply", "Room_2.ply", "Room_3.ply"]
         
     try:
@@ -95,7 +95,9 @@ def register(request):
         return JsonResponse({'success': False, 'error': 'Exceeded registration limit.'}, status=400)
         
     try:
-        storage.save(os.path.join(authorization, next_room), ContentFile(files[0].read()))
+        file_path = os.path.join(settings.MEDIA_ROOT, authorization, next_room)
+
+        write_point_cloud(file_path, ContentFile(files[0].read()))
         return JsonResponse({'success': True}, status=200)
     except Exception as e:
         logger.error(f"Failed to register point cloud: {e}")
@@ -119,11 +121,10 @@ def authenticate(request):
         
     files = request.FILES.getlist('files')
     storage = OverwriteStorage()
-    source_file_path = os.path.join(authorization, "source.ply")
+    source = os.path.join(settings.MEDIA_ROOT, authorization, "source.ply")
         
     try:
-        storage.save(source_file_path, ContentFile(files[0].read()))
-        source = os.path.join(settings.MEDIA_ACCESS_URL, source_file_path)
+        write_point_cloud(source, ContentFile(files[0].read()))
             
         highest_result = 0
         for file in os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization)):
@@ -147,18 +148,20 @@ def authenticate(request):
                 print("Using DeepGMR")
                 result = deepgmr.execute_deepgmr(source, target)
             
+            if result == 1:
+                authentication_time = time() - start
+                print(f'Authentication time: {authentication_time}')
+                return JsonResponse({'success': True, 'fitness': result}, status=200)
             highest_result = max(highest_result, result)
             
         authentication_time = time() - start
         print(f'Authentication time: {authentication_time}')
-        if highest_result == 1:
-            return JsonResponse({'success': True, 'fitness': highest_result}, status=200)
         return JsonResponse({'success': False, 'fitness': highest_result}, status=200)
     except Exception as e:
         logger.error(f"Authentication failed: {e}")
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
     finally:
-        storage.delete(source_file_path)
+        storage.delete(source)
 
 
 # curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/collect/
@@ -175,14 +178,15 @@ def collect(request):
         return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
     files = request.FILES.getlist('files')
-    storage = OverwriteStorage()
 
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y-%H-%M-%S")
     dt_string = dt_string + ".ply"
         
     try:
-        storage.save(os.path.join(authorization, dt_string), ContentFile(files[0].read()))
+        file_path = os.path.join(settings.MEDIA_ROOT, authorization, dt_string)
+
+        write_point_cloud(file_path, ContentFile(files[0].read()))
         return JsonResponse({'success': True}, status=200)
     except Exception as e:
         logger.error(f"Failed to register point cloud: {e}")
