@@ -127,7 +127,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 # Media
 MEDIA_URL = '/media/'
 MEDIA_ROOT = BASE_DIR / 'media'
-MEDIA_ACCESS_URL = os.path.join(BASE_DIR, 'media/')
 
 # File
 DEFAULT_FILE_STORAGE = 'django.core.files.storage.FileSystemStorage'

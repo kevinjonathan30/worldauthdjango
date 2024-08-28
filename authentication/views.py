@@ -31,7 +31,7 @@ def get_point_cloud(request):
         return JsonResponse({'error': 'Unauthorized'}, status=401)
         
     try:
-        pcd_list = os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization))
+        pcd_list = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
         return JsonResponse({'success': True, 'data': pcd_list}, status=200)
     except Exception as e:
         logger.error(f"Failed to list point clouds: {e}")
@@ -54,7 +54,7 @@ def delete_point_cloud(request):
     storage = OverwriteStorage()
     try:
         storage.delete(os.path.join(authorization, file_request))
-        remaining_files = os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization))
+        remaining_files = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
         if not remaining_files:
             storage.delete(authorization)
         return JsonResponse({'success': True}, status=200)
@@ -79,7 +79,7 @@ def register(request):
     room_sequence = ["Room_1.ply", "Room_2.ply", "Room_3.ply"]
         
     try:
-        pcd_list = os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization))
+        pcd_list = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
         rooms_present = {room: room in pcd_list for room in room_sequence}
     except Exception as e:
         logger.error(f"Failed to list rooms: {e}")
@@ -127,10 +127,10 @@ def authenticate(request):
         write_point_cloud(source, ContentFile(files[0].read()))
             
         highest_result = 0
-        for file in os.listdir(os.path.join(settings.MEDIA_ACCESS_URL, authorization)):
+        for file in os.listdir(os.path.join(settings.MEDIA_ROOT, authorization)):
             if file == "source.ply":
                 continue
-            target = os.path.join(settings.MEDIA_ACCESS_URL, authorization, file)
+            target = os.path.join(settings.MEDIA_ROOT, authorization, file)
 
             if method == AuthenticationMethod.ICP:
                 print("Using ICP Point-to-Plane & RANSAC")
