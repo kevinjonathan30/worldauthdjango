@@ -26,7 +26,7 @@ SECRET_KEY = 'REMOVED'
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["REMOVED-NGROK"]
+ALLOWED_HOSTS = ["13.113.88.65", "REMOVED-NGROK"]
 
 
 # Application definition
