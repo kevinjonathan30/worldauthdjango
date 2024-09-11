@@ -1,5 +1,15 @@
 # WorldAuthDjango
 
+## Setup
+Create virtual environment
+```bash
+python -m venv venv
+```
+Then install the required libraries
+```bash
+pip install -r requirements.txt
+```
+
 ## How to Run
 
 Run the following commands to start the Django development server and Ngrok:
@@ -7,7 +17,7 @@ Run the following commands to start the Django development server and Ngrok:
 ```bash
 python manage.py runserver
 ```
-Then open a separate window, run this
+If you want to test the local server outside LAN, open a separate window, run this
 ```bash
 ./ngrok http --domain=REMOVED-NGROK 8000
 ```
