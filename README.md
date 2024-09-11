@@ -5,6 +5,10 @@ Create virtual environment
 ```bash
 python -m venv venv
 ```
+And activate the environment
+```bash
+source venv/bin/activate
+```
 Then install the required libraries
 ```bash
 pip install -r requirements.txt
