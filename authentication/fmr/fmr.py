@@ -15,8 +15,7 @@ from .model import PointNet, Decoder, SolveRegistration
 import open3d as o3d
 from django.conf import settings
 
-LOGGER = logging.getLogger(__name__)
-LOGGER.addHandler(logging.NullHandler())
+logger = logging.getLogger('authentication')
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
@@ -27,7 +26,7 @@ def evaluate_registration(source, target, transformation):
     target_temp = copy.deepcopy(target)
     source_temp2.transform(transformation)
     evaluation = o3d.pipelines.registration.evaluate_registration(target_temp, source_temp2, 0.7)
-    print(evaluation)
+    logger.info(evaluation)
     return evaluation.fitness
 
 

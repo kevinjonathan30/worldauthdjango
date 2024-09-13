@@ -146,10 +146,10 @@ def _fix_modelnet_broken_off(filepath):
         with open(filepath, 'w') as fout:
             sig = fin.readline().strip()
             line = sig[3:]
-            print('OFF', file=fout)
-            print(line, file=fout)
+            logger.info('OFF', file=fout)
+            logger.info(line, file=fout)
             for line in fin:
-                print(line.strip(), file=fout)
+                logger.info(line.strip(), file=fout)
 
 
 def objread(filepath, points_only=True):

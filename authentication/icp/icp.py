@@ -4,7 +4,7 @@ import logging
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('authentication')
 
 # icp-based 3D authentication based on Open3D 0.15.2
 #

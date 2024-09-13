@@ -11,6 +11,9 @@ from .visu_util import visualize
 
 import open3d as o3d
 import numpy as np
+import logging
+
+logger = logging.getLogger('authentication')
 
 def evaluate_registration(pts1, pts2, T_21, T_gt, idx):
     """
@@ -42,7 +45,7 @@ def evaluate_registration(pts1, pts2, T_21, T_gt, idx):
     pcd3.points = o3d.utility.Vector3dVector(transformed_pts2)
 
     evaluation = o3d.pipelines.registration.evaluate_registration(pcd1, pcd3, 0.7)
-    print(evaluation)
+    logger.info(evaluation)
     return evaluation.fitness
 
 # Example usage

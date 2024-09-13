@@ -15,7 +15,7 @@ def preprocess_data(template, source, p0_zero_mean, p1_zero_mean):
 		# q0 = template
 
 	if p1_zero_mean:
-		#print(numpy.any(numpy.isnan(p1.numpy())))
+		#logger.info(numpy.any(numpy.isnan(p1.numpy())))
 		p1_m = source.mean(dim=1) # [B, N, 3] -> [B, 3]
 		source_mean = torch.cat([source_mean, -p1_m.unsqueeze(-1)], dim=2)
 		one_ = torch.tensor([[[0.0, 0.0, 0.0, 1.0]]]).repeat(source_mean.shape[0], 1, 1).to(source_mean)    # (Bx1x4)

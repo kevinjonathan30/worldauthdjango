@@ -1,6 +1,9 @@
 """ inverse matrix """
 
 import torch
+import logging
+
+logger = logging.getLogger('authentication')
 
 
 def batch_inverse(x):
@@ -126,9 +129,9 @@ if __name__ == '__main__':
         y, dy_dx = batch_pinv_dx(x)
         t2 = dy_dx.sum(1).sum(1)
 
-        print(t1)
-        print(t2)
-        print(t1 - t2)
+        logger.info(t1)
+        logger.info(t2)
+        logger.info(t1 - t2)
 
 
     test()

@@ -15,7 +15,7 @@ from datetime import datetime
 from time import time
 
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger('authentication')
 
 def index(request):
     return HttpResponse("GET OUT OF HERE.")
@@ -133,29 +133,29 @@ def authenticate(request):
             target = os.path.join(settings.MEDIA_ROOT, authorization, file)
 
             if method == AuthenticationMethod.ICP:
-                print("Using ICP Point-to-Plane & RANSAC")
+                logger.info("Using ICP Point-to-Plane & RANSAC")
                 result = icp.execute_icp(source, target)
             elif method == AuthenticationMethod.FGR:
-                print("Using Fast Global Registration")
+                logger.info("Using Fast Global Registration")
                 result = icp.execute_icp(source, target, fast_registration=True)
             elif method == AuthenticationMethod.PNLK:
-                print("Using PointNetLK")
+                logger.info("Using PointNetLK")
                 result = pointnetlk.execute_pointnetlk(source, target)
             elif method == AuthenticationMethod.FMR:
-                print("Using Feature-metric Registration")
+                logger.info("Using Feature-metric Registration")
                 result = fmr.execute_fmr(source, target)
             elif method == AuthenticationMethod.DGMR:
-                print("Using DeepGMR")
+                logger.info("Using DeepGMR")
                 result = deepgmr.execute_deepgmr(source, target)
             
             if result == 1:
                 authentication_time = time() - start
-                print(f'Authentication time: {authentication_time}')
+                logger.info(f'Authentication time: {authentication_time}')
                 return JsonResponse({'success': True, 'fitness': result}, status=200)
             highest_result = max(highest_result, result)
             
         authentication_time = time() - start
-        print(f'Authentication time: {authentication_time}')
+        logger.info(f'Authentication time: {authentication_time}')
         return JsonResponse({'success': False, 'fitness': highest_result}, status=200)
     except Exception as e:
         logger.error(f"Authentication failed: {e}")

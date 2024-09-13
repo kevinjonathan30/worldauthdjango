@@ -9,7 +9,9 @@ from random import sample
 
 from .se_math import se3
 from .se_math import invmat
+import logging
 
+logger = logging.getLogger('authentication')
 
 # a global function to flatten a feature
 def flatten(x):
@@ -245,7 +247,7 @@ class SolveRegistration(torch.nn.Module):
         except RuntimeError as err:
             # singular...?
             self.last_err = err
-            print(err)
+            logger.error(err)
             f1 = self.encoder(p1)  # [B, N, 3] -> [B, K]
             r = f1 - f0
             self.ptnet.train(training)
@@ -398,7 +400,7 @@ class FMRTrain:
             if Debug:
                 epe += loss_item
                 if count % 10 == 0:
-                    print('i=%d, fmr_loss=%f ' % (i, float(epe) / (count_mid + 1)))
+                    logger.info('i=%d, fmr_loss=%f ' % (i, float(epe) / (count_mid + 1)))
                     epe = 0.0
             count += 1
         ave_loss = float(total_loss) / count
@@ -461,7 +463,7 @@ class FMRTest:
                     dm = dn.mean()
 
                     self.eval_1__write(fout, ig_gt, g_hat)
-                    print('test, %d/%d, %f' % (i, len(testloader), dm))
+                    logger.info('test, %d/%d, %f' % (i, len(testloader), dm))
 
 
     def ablation_study(self, p0, p1, add_noise=False, add_density=False):
@@ -485,7 +487,7 @@ class FMRTest:
             elif pts_num > 0:
                 num = range(0, pts_num)
             else:
-                print("No points in this point cloud!")
+                logger.info("No points in this point cloud!")
                 return
             p1 = p1[num, :]
         return p0, p1
@@ -493,7 +495,7 @@ class FMRTest:
     def eval_1__header(self, fout):
         cols = ['h_w1', 'h_w2', 'h_w3', 'h_v1', 'h_v2', 'h_v3', \
                 'g_w1', 'g_w2', 'g_w3', 'g_v1', 'g_v2', 'g_v3']  # h: estimated, g: ground-truth twist vectors
-        print(','.join(map(str, cols)), file=fout)
+        logger.info(','.join(map(str, cols)), file=fout)
         fout.flush()
 
     def eval_1__write(self, fout, ig_gt, g_hat):
@@ -504,6 +506,6 @@ class FMRTest:
             mx_gt1 = mx_gt[i]  # [6]
             vals = torch.cat((x_hat1, -mx_gt1))  # [12]
             valn = vals.cpu().numpy().tolist()
-            print(','.join(map(str, valn)), file=fout)
+            logger.info(','.join(map(str, valn)), file=fout)
         fout.flush()
 
