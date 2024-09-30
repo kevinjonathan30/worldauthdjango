@@ -23,7 +23,7 @@ def preprocess_point_cloud(pcd, use_rri, k=None):
         pcd = np.concatenate([pcd, get_rri(pcd - pcd.mean(axis=0), k)], axis=1)
     return pcd.astype('float32')
 
-def evaluate(model, pts1, pts2, T_gt, rmse_thresh, save_results=False, results_dir=None):
+def evaluate(model, pts1, pts2, T_gt, rmse_thresh, save_results=False, results_dir=None, threshold=0.7):
     model.eval()
     # log_fmt = 'Inference time {:.3f}, Preprocessing time {:.3f}, Loss {:.4f}, ' + \
     #           'Rotation error {:.2f}, Translation error {:.4f}, RMSE {:.4f}, Recall {:.3f}'
@@ -75,7 +75,7 @@ def evaluate(model, pts1, pts2, T_gt, rmse_thresh, save_results=False, results_d
         np.save(os.path.join(results_dir, 'rotations_gt.npy'), T_gt[:, :3, :3].cpu().numpy())
         np.save(os.path.join(results_dir, 'translations_gt.npy'), T_gt[:, :3, 3].cpu().numpy())
 
-    return model.evaluate_registration(0)
+    return model.evaluate_registration(0, threshold)
 
 def options():
     class Args:
@@ -94,7 +94,7 @@ def options():
 
     return Args()
 
-def execute_deepgmr(source, target):
+def execute_deepgmr(source, target, threshold=0.7):
     args = options()
 
     torch.set_num_threads(1)
@@ -113,4 +113,4 @@ def execute_deepgmr(source, target):
     model.load_state_dict(torch.load(args.checkpoint, map_location='cpu'))
 
     # Evaluate the model with the specified parameters
-    return evaluate(model, source_pcd, target_pcd, T_gt, args.rmse_thresh, args.save_results, args.results_dir)
+    return evaluate(model, source_pcd, target_pcd, T_gt, args.rmse_thresh, args.save_results, args.results_dir, threshold=threshold)

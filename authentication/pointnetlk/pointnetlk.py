@@ -12,7 +12,7 @@ def load_ply_file(filepath):
     pcd = o3d.io.read_point_cloud(filepath)
     return np.asarray(pcd.points)
 
-def evaluate_registration(template, source, est_T):
+def evaluate_registration(template, source, est_T, threshold=0.7):
     template, source, est_T = template[0], source[0], est_T[0]
     transformed_source = np.matmul(est_T[0:3, 0:3], source.T).T + est_T[0:3, 3]
 
@@ -24,7 +24,7 @@ def evaluate_registration(template, source, est_T):
     source_.points = o3d.utility.Vector3dVector(source)
     transformed_source_.points = o3d.utility.Vector3dVector(transformed_source)
     
-    evaluation = o3d.pipelines.registration.evaluate_registration(template_, transformed_source_, 0.7)
+    evaluation = o3d.pipelines.registration.evaluate_registration(template_, transformed_source_, threshold)
     logger.info(evaluation)
     return evaluation.fitness
 
@@ -33,7 +33,7 @@ def read_data(source, target):
     source = load_ply_file(source)
     return torch.tensor(template, dtype=torch.float32), torch.tensor(source, dtype=torch.float32)
 
-def test(args, model, data):
+def test(args, model, data, threshold):
     model.eval()
     template, source = data
 
@@ -46,7 +46,7 @@ def test(args, model, data):
 
     logger.info(est_T)
     logger.info(r)
-    return evaluate_registration(template.detach().cpu().numpy(), source.detach().cpu().numpy(), est_T.detach().cpu().numpy())
+    return evaluate_registration(template.detach().cpu().numpy(), source.detach().cpu().numpy(), est_T.detach().cpu().numpy(), threshold)
 
 def options():
     class Args:
@@ -60,7 +60,7 @@ def options():
 
     return Args()
 
-def execute_pointnetlk(source, target):
+def execute_pointnetlk(source, target, threshold=0.7):
     args = options()
 
     torch.set_num_threads(1)
@@ -78,4 +78,4 @@ def execute_pointnetlk(source, target):
     model.to(args.device)
 
     data = read_data(source, target)
-    return test(args, model, data)
+    return test(args, model, data, threshold)

@@ -20,12 +20,12 @@ logger = logging.getLogger('authentication')
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
 # visualize the point clouds
-def evaluate_registration(source, target, transformation):
+def evaluate_registration(source, target, transformation, threshold=0.7):
     source_temp = copy.deepcopy(source)
     source_temp2 = copy.deepcopy(source)
     target_temp = copy.deepcopy(target)
     source_temp2.transform(transformation)
-    evaluation = o3d.pipelines.registration.evaluate_registration(target_temp, source_temp2, 0.7)
+    evaluation = o3d.pipelines.registration.evaluate_registration(target_temp, source_temp2, threshold)
     logger.info(evaluation)
     return evaluation.fitness
 
@@ -57,7 +57,7 @@ class Demo:
 
             return g_hat
 
-def execute_fmr(source, target):
+def execute_fmr(source, target, threshold=0.7):
     p0_src = open3d.io.read_point_cloud(target)
     downpcd0 = p0_src.voxel_down_sample(voxel_size=0.05)
     p0 = np.asarray(downpcd0.points)
@@ -89,4 +89,4 @@ def execute_fmr(source, target):
     model.to(device)
     T_est = fmr.evaluate(model, p0, p1, device)
 
-    return evaluate_registration(downpcd1, downpcd0, T_est)
+    return evaluate_registration(downpcd1, downpcd0, T_est, threshold=threshold)

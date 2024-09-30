@@ -15,7 +15,7 @@ import logging
 
 logger = logging.getLogger('authentication')
 
-def evaluate_registration(pts1, pts2, T_21, T_gt, idx):
+def evaluate_registration(pts1, pts2, T_21, T_gt, idx, threshold=0.7):
     """
     Visualize the transformed point cloud based on the transformation matrix T_21.
 
@@ -44,7 +44,7 @@ def evaluate_registration(pts1, pts2, T_21, T_gt, idx):
     pcd2.points = o3d.utility.Vector3dVector(pts2_np)
     pcd3.points = o3d.utility.Vector3dVector(transformed_pts2)
 
-    evaluation = o3d.pipelines.registration.evaluate_registration(pcd1, pcd3, 0.7)
+    evaluation = o3d.pipelines.registration.evaluate_registration(pcd1, pcd3, threshold)
     logger.info(evaluation)
     return evaluation.fitness
 
@@ -243,5 +243,5 @@ class DeepGMR(nn.Module):
                          self.r_err[i], self.t_err[i], self.rmse[i]])
         return fig
     
-    def evaluate_registration(self, idx):
-        return evaluate_registration(self.pts1, self.pts2, self.T_21, self.T_gt, idx)
+    def evaluate_registration(self, idx, threshold=0.7):
+        return evaluate_registration(self.pts1, self.pts2, self.T_21, self.T_gt, idx, threshold)

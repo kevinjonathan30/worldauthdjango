@@ -9,4 +9,5 @@ urlpatterns = [
     path('register/', views.register, name="register"),
     path('authenticate/', views.authenticate, name="authenticate"),
     path('collect/', views.collect, name="collect"),
+    path('far_ffr/', views.count_far_ffr, name="count_ffr"),
 ]

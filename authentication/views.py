@@ -9,6 +9,7 @@ from authentication.pointnetlk import pointnetlk
 from authentication.fmr import fmr 
 from authentication.deepgmr import deepgmr 
 from authentication.helper import write_point_cloud
+from authentication.far_frr import execute_far_frr
 import os
 import logging
 from datetime import datetime
@@ -190,3 +191,12 @@ def collect(request):
     except Exception as e:
         logger.error(f"Failed to register point cloud: {e}")
         return JsonResponse({'success': False, 'error': 'Failed to register Point Cloud.'}, status=500)
+
+# curl -X GET http://127.0.0.1:8000/api/far_ffr/
+@csrf_exempt
+def count_far_ffr(request):
+    if request.method != 'GET':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+    result = execute_far_frr()
+    
+    return JsonResponse({'success': True, 'data': result}, status=200)
