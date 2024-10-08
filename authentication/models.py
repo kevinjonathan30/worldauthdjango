@@ -6,8 +6,8 @@ class UploadedFile(models.Model):
     uploaded_at = models.DateTimeField(auto_now_add=True)
 
 class AuthenticationMethod(Enum):
-    ICP = "Iterative Closest Point"
-    FGR = "Fast Global Registration"
-    PNLK = "PointNetLK"
-    FMR = "Feature-metric Registration"
-    DGMR = "DeepGMR"
+    ICP = "ICP"
+    FGR = "FGR"
+    PNLK = "PNLK"
+    FMR = "FMR"
+    DGMR = "DGMR"

@@ -2,19 +2,21 @@ from django.http import HttpResponse, JsonResponse
 from django.views.decorators.csrf import csrf_exempt
 from django.core.files.base import ContentFile
 from django.conf import settings
+
 from .models import AuthenticationMethod
 from .storage import OverwriteStorage
+
 from authentication.icp import icp
-from authentication.pointnetlk import pointnetlk 
-from authentication.fmr import fmr 
-from authentication.deepgmr import deepgmr 
-from authentication.helper import write_point_cloud
-from authentication.far_frr import execute_far_frr
+from authentication.pointnetlk import pointnetlk
+from authentication.fmr import fmr
+from authentication.deepgmr import deepgmr
+
+from authentication.helper import write_point_cloud, get_method_config
+
 import os
 import logging
 from datetime import datetime
 from time import time
-
 
 logger = logging.getLogger('authentication')
 
@@ -77,26 +79,12 @@ def register(request):
         return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
         
     files = request.FILES.getlist('files')
-    room_sequence = ["Room_1.ply", "Room_2.ply", "Room_3.ply"]
+
+    now = datetime.now()
+    dt_string = now.strftime("%d-%m-%Y-%H-%M-%S") + ".ply"
         
     try:
-        pcd_list = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
-        rooms_present = {room: room in pcd_list for room in room_sequence}
-    except Exception as e:
-        logger.error(f"Failed to list rooms: {e}")
-        rooms_present = {room: False for room in room_sequence}
-        
-    next_room = None
-    for room in room_sequence:
-        if not rooms_present[room]:
-            next_room = room
-            break
-        
-    if not next_room:
-        return JsonResponse({'success': False, 'error': 'Exceeded registration limit.'}, status=400)
-        
-    try:
-        file_path = os.path.join(settings.MEDIA_ROOT, authorization, next_room)
+        file_path = os.path.join(settings.MEDIA_ROOT, authorization, dt_string)
 
         write_point_cloud(file_path, ContentFile(files[0].read()))
         return JsonResponse({'success': True}, status=200)
@@ -117,7 +105,7 @@ def authenticate(request):
     if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
         return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
     
-    method = AuthenticationMethod.FMR
+    method = get_method_config()
     start = time()
         
     files = request.FILES.getlist('files')
@@ -163,40 +151,3 @@ def authenticate(request):
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
     finally:
         storage.delete(source)
-
-
-# curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/collect/
-@csrf_exempt
-def collect(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request'}, status=400)
-    
-    authorization = request.headers.get('Authorization')
-        
-    if not authorization:
-        return JsonResponse({'error': 'Unauthorized'}, status=401)
-    if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
-        return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
-        
-    files = request.FILES.getlist('files')
-
-    now = datetime.now()
-    dt_string = now.strftime("%d-%m-%Y-%H-%M-%S") + ".ply"
-        
-    try:
-        file_path = os.path.join(settings.MEDIA_ROOT, authorization, dt_string)
-
-        write_point_cloud(file_path, ContentFile(files[0].read()))
-        return JsonResponse({'success': True}, status=200)
-    except Exception as e:
-        logger.error(f"Failed to register point cloud: {e}")
-        return JsonResponse({'success': False, 'error': 'Failed to register Point Cloud.'}, status=500)
-
-# curl -X GET http://127.0.0.1:8000/api/far_ffr/
-@csrf_exempt
-def count_far_ffr(request):
-    if request.method != 'GET':
-        return JsonResponse({'error': 'Invalid request'}, status=400)
-    result = execute_far_frr()
-    
-    return JsonResponse({'success': True, 'data': result}, status=200)
