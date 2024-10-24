@@ -10,6 +10,7 @@ logger = logging.getLogger('authentication')
 
 def load_ply_file(filepath):
     pcd = o3d.io.read_point_cloud(filepath)
+    pcd = pcd.voxel_down_sample(0.1)
     return np.asarray(pcd.points)
 
 def evaluate_registration(template, source, est_T, threshold=0.7):

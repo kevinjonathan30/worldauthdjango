@@ -93,9 +93,6 @@ def preprocess_point_cloud(pcd, voxel_size):
 def prepare_dataset(voxel_size, source, target):
     # 2つの点群データの読み込みと初期姿勢の変更 (Load two point cloud data and change the initial orientation)
     logger.info(":: Load two point clouds and disturb initial pose.")
-    trans_init = np.asarray([[0.0, 0.0, 1.0, 0.0], [1.0, 0.0, 0.0, 0.0],
-                             [0.0, 1.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]])
-    source.transform(trans_init)
 
     # 前処理の適用 (Apply preprocessing)
     source_down, source_fpfh = preprocess_point_cloud(source, voxel_size)

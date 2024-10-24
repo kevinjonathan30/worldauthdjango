@@ -19,6 +19,7 @@ def load_point_cloud(file_path):
 
 def preprocess_point_cloud(pcd, use_rri, k=None):
     """Preprocess the point cloud data, optionally adding RRI features."""
+    pcd = pcd.voxel_down_sample(0.1)
     if use_rri:
         pcd = np.concatenate([pcd, get_rri(pcd - pcd.mean(axis=0), k)], axis=1)
     return pcd.astype('float32')

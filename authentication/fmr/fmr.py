@@ -59,7 +59,7 @@ class Demo:
 
 def execute_fmr(source, target, threshold=0.7):
     p0_src = open3d.io.read_point_cloud(target)
-    downpcd0 = p0_src.voxel_down_sample(voxel_size=0.05)
+    downpcd0 = p0_src.voxel_down_sample(voxel_size=0.1)
     p0 = np.asarray(downpcd0.points)
     p0 = np.expand_dims(p0,0)
 
@@ -75,7 +75,7 @@ def execute_fmr(source, target, threshold=0.7):
     '''
 
     p1 = open3d.io.read_point_cloud(source)
-    downpcd1 = p1.voxel_down_sample(voxel_size=0.05)
+    downpcd1 = p1.voxel_down_sample(voxel_size=0.1)
     p1 = np.asarray(downpcd1.points)
     p1 = np.expand_dims(p1, 0)
     
