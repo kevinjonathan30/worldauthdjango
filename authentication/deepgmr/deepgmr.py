@@ -15,11 +15,12 @@ from .data import get_rri
 
 def load_point_cloud(file_path):
     """Load a point cloud from a file and return it as a numpy array."""
-    return np.asarray(o3d.io.read_point_cloud(file_path).points)
+    pcd = o3d.io.read_point_cloud(file_path)
+    pcd = pcd.voxel_down_sample(0.1)
+    return np.asarray(pcd.points)
 
 def preprocess_point_cloud(pcd, use_rri, k=None):
     """Preprocess the point cloud data, optionally adding RRI features."""
-    pcd = pcd.voxel_down_sample(0.1)
     if use_rri:
         pcd = np.concatenate([pcd, get_rri(pcd - pcd.mean(axis=0), k)], axis=1)
     return pcd.astype('float32')
