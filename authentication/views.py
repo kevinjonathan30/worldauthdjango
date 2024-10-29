@@ -124,23 +124,23 @@ def authenticate(request):
             target = os.path.join(settings.MEDIA_ROOT, authorization, file)
 
             if method == AuthenticationMethod.ICP:
-                threshold=0.55
+                threshold=0.545
                 logger.info("Using ICP Point-to-Plane & RANSAC")
                 result = icp.execute_icp(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FGR:
-                threshold=0.66
+                threshold=0.54
                 logger.info("Using Fast Global Registration")
                 result = icp.execute_icp(source, target, fast_registration=True, threshold=threshold)
             elif method == AuthenticationMethod.PNLK:
-                threshold=0.54
+                threshold=0.525
                 logger.info("Using PointNetLK")
                 result = pointnetlk.execute_pointnetlk(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FMR:
-                threshold=0.53
+                threshold=0.525
                 logger.info("Using Feature-metric Registration")
                 result = fmr.execute_fmr(source, target, threshold=threshold)
             elif method == AuthenticationMethod.DGMR:
-                threshold=0.68
+                threshold=0.675
                 logger.info("Using DeepGMR")
                 result = deepgmr.execute_deepgmr(source, target, threshold=threshold)
             
