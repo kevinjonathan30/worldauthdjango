@@ -22,10 +22,9 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pa
 # visualize the point clouds
 def evaluate_registration(source, target, transformation, threshold=0.7):
     source_temp = copy.deepcopy(source)
-    source_temp2 = copy.deepcopy(source)
     target_temp = copy.deepcopy(target)
-    source_temp2.transform(transformation)
-    evaluation = o3d.pipelines.registration.evaluate_registration(target_temp, source_temp2, threshold)
+    source_temp.transform(transformation)
+    evaluation = o3d.pipelines.registration.evaluate_registration(source_temp, target_temp, threshold)
     logger.info(evaluation)
     return evaluation.fitness
 
@@ -48,7 +47,7 @@ class Demo:
     def evaluate(self, solver, p0, p1, device):
         solver.eval()
         with torch.no_grad():
-            p0 = torch.tensor(p0,dtype=torch.float).to(device)  # template (1, N, 3)
+            p0 = torch.tensor(p0,dtype=torch.float).to(device)  # target (1, N, 3)
             p1 = torch.tensor(p1,dtype=torch.float).to(device)  # source (1, M, 3)
             solver.estimate_t(p0, p1, self.max_iter)
 

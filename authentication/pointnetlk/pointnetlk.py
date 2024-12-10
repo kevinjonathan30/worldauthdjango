@@ -13,41 +13,41 @@ def load_ply_file(filepath):
     pcd = pcd.voxel_down_sample(0.1)
     return np.asarray(pcd.points)
 
-def evaluate_registration(template, source, est_T, threshold=0.7):
-    template, source, est_T = template[0], source[0], est_T[0]
+def evaluate_registration(target, source, est_T, threshold=0.7):
+    target, source, est_T = target[0], source[0], est_T[0]
     transformed_source = np.matmul(est_T[0:3, 0:3], source.T).T + est_T[0:3, 3]
 
-    template_ = o3d.geometry.PointCloud()
+    target_ = o3d.geometry.PointCloud()
     source_ = o3d.geometry.PointCloud()
     transformed_source_ = o3d.geometry.PointCloud()
 
-    template_.points = o3d.utility.Vector3dVector(template)
+    target_.points = o3d.utility.Vector3dVector(target)
     source_.points = o3d.utility.Vector3dVector(source)
     transformed_source_.points = o3d.utility.Vector3dVector(transformed_source)
     
-    evaluation = o3d.pipelines.registration.evaluate_registration(template_, transformed_source_, threshold)
+    evaluation = o3d.pipelines.registration.evaluate_registration(transformed_source_, target_, threshold)
     logger.info(evaluation)
     return evaluation.fitness
 
-def read_data(source, target):
-    template = load_ply_file(target)
-    source = load_ply_file(source)
-    return torch.tensor(template, dtype=torch.float32), torch.tensor(source, dtype=torch.float32)
+def read_data(source_ply, target_ply):
+    source = load_ply_file(source_ply)
+    target = load_ply_file(target_ply)
+    return torch.tensor(source, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
 
 def test(args, model, data, threshold):
     model.eval()
-    template, source = data
+    source, target = data
 
-    template = template.view(1, -1, 3).to(args.device)
+    target = target.view(1, -1, 3).to(args.device)
     source = source.view(1, -1, 3).to(args.device)
 
-    result = model(template, source)
+    result = model(target, source)
     est_T = result['est_T']
     r = result['r']
 
     logger.info(est_T)
     logger.info(r)
-    return evaluate_registration(template.detach().cpu().numpy(), source.detach().cpu().numpy(), est_T.detach().cpu().numpy(), threshold)
+    return evaluate_registration(target.detach().cpu().numpy(), source.detach().cpu().numpy(), est_T.detach().cpu().numpy(), threshold)
 
 def options():
     class Args:
