@@ -58,6 +58,6 @@ if __name__ == '__main__':
 	mask, partial_data = sphere_torch(data)
 
 	data, partial_data = data.numpy(), partial_data.numpy()
-	logger.info(partial_data.shape)
+	print(partial_data.shape)
 	# mask, partial_data = sphere(data)
 	visualize_result(data_original[0], partial_data[0])

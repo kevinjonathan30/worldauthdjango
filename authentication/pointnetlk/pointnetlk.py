@@ -4,9 +4,6 @@ import torch
 import numpy as np
 from .model import PointLK, PointNet_features
 from django.conf import settings
-import logging
-
-logger = logging.getLogger('authentication')
 
 def load_ply_file(filepath):
     pcd = o3d.io.read_point_cloud(filepath)
@@ -26,7 +23,7 @@ def evaluate_registration(target, source, est_T, threshold=0.7):
     transformed_source_.points = o3d.utility.Vector3dVector(transformed_source)
     
     evaluation = o3d.pipelines.registration.evaluate_registration(transformed_source_, target_, threshold)
-    logger.info(evaluation)
+    print(evaluation)
     return evaluation.fitness
 
 def read_data(source_ply, target_ply):
@@ -45,8 +42,8 @@ def test(args, model, data, threshold):
     est_T = result['est_T']
     r = result['r']
 
-    logger.info(est_T)
-    logger.info(r)
+    print(est_T)
+    print(r)
     return evaluate_registration(target.detach().cpu().numpy(), source.detach().cpu().numpy(), est_T.detach().cpu().numpy(), threshold)
 
 def options():

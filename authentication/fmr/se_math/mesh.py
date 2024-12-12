@@ -10,9 +10,6 @@ import matplotlib.pyplot
 from plyfile import PlyData
 import open3d as o3d
 import numpy as np
-import logging
-
-logger = logging.getLogger('authentication')
 
 
 class Mesh:
@@ -163,14 +160,6 @@ def _load_off(fin, points_only):
 def _fix_modelnet_broken_off(filepath):
     oldfile = '{}.orig'.format(filepath)
     os.rename(filepath, oldfile)
-    with open(oldfile, 'r') as fin:
-        with open(filepath, 'w') as fout:
-            sig = fin.readline().strip()
-            line = sig[3:]
-            logger.info('OFF', file=fout)
-            logger.info(line, file=fout)
-            for line in fin:
-                logger.info(line.strip(), file=fout)
 
 
 def objread(filepath, points_only=True):

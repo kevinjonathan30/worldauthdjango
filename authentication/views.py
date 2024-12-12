@@ -14,13 +14,17 @@ from authentication.deepgmr import deepgmr
 from authentication.helper import write_point_cloud, get_method_config
 
 import os
-import logging
 from datetime import datetime
 from time import time
-
-logger = logging.getLogger('authentication')
+from logger import log_debug, log_info, log_error
 
 def index(request):
+    log_debug(
+        "accessIndex",
+        extra={
+            "message": "GET OUT OF HERE."
+        }
+    )
     return HttpResponse("GET OUT OF HERE.")
 
 # curl -X GET http://127.0.0.1:8000/api/get_point_cloud/
@@ -37,7 +41,12 @@ def get_point_cloud(request):
         pcd_list = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
         return JsonResponse({'success': True, 'data': pcd_list}, status=200)
     except Exception as e:
-        logger.error(f"Failed to list point clouds: {e}")
+        log_error(
+            "getPointCloud",
+            extra={
+                "message": f"Failed to list point clouds: {e}"
+            }
+        )
         return JsonResponse({'success': True, 'data': []}, status=200)
 
 # curl -X DELETE http://127.0.0.1:8000/api/delete_point_cloud/
@@ -62,7 +71,12 @@ def delete_point_cloud(request):
             storage.delete(authorization)
         return JsonResponse({'success': True}, status=200)
     except Exception as e:
-        logger.error(f"Failed to delete point cloud: {e}")
+        log_error(
+            "deletePointCloud",
+            extra={
+                "message": f"Failed to delete point cloud: {e}"
+            }
+        )
         return JsonResponse({'success': False, 'error': 'Failed to delete Point Cloud.'}, status=500)
 
 # curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/register/
@@ -89,7 +103,12 @@ def register(request):
         write_point_cloud(file_path, ContentFile(files[0].read()))
         return JsonResponse({'success': True}, status=200)
     except Exception as e:
-        logger.error(f"Failed to register point cloud: {e}")
+        log_error(
+            "registerPointCloud",
+            extra={
+                "message": f"Failed to register point cloud: {e}"
+            }
+        )
         return JsonResponse({'success': False, 'error': 'Failed to register Point Cloud.'}, status=500)
 
 # curl -X POST -F 'files=@/path/to/file.ply' http://127.0.0.1:8000/api/authenticate/
@@ -125,37 +144,42 @@ def authenticate(request):
 
             if method == AuthenticationMethod.ICP:
                 threshold=0.545
-                logger.info("Using ICP Point-to-Plane & RANSAC")
                 result = icp.execute_icp(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FGR:
                 threshold=0.54
-                logger.info("Using Fast Global Registration")
                 result = icp.execute_icp(source, target, fast_registration=True, threshold=threshold)
             elif method == AuthenticationMethod.PNLK:
                 threshold=0.58
-                logger.info("Using PointNetLK")
                 result = pointnetlk.execute_pointnetlk(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FMR:
                 threshold=0.66
-                logger.info("Using Feature-metric Registration")
                 result = fmr.execute_fmr(source, target, threshold=threshold)
             elif method == AuthenticationMethod.DGMR:
                 threshold=0.675
-                logger.info("Using DeepGMR")
                 result = deepgmr.execute_deepgmr(source, target, threshold=threshold)
             
-            if result == 1:
-                authentication_time = time() - start
-                logger.info(f'Authentication time: {authentication_time}')
-                return JsonResponse({'success': True, 'fitness': result}, status=200)
             highest_result = max(highest_result, result)
+            if highest_result == 1:
+                break
             
         authentication_time = time() - start
-        logger.info(f'Authentication time: {authentication_time}')
-        logger.info(f'Threshold used: {threshold}')
-        return JsonResponse({'success': False, 'fitness': highest_result}, status=200)
+        log_info(
+            "authenticatePointCloud",
+            extra={
+                "method": method,
+                "fitness": highest_result,
+                "threshold": threshold,
+                "authTime": authentication_time
+            }
+        )
+        return JsonResponse({'success': True, 'fitness': highest_result}, status=200)
     except Exception as e:
-        logger.error(f"Authentication failed: {e}")
+        log_error(
+            "authenticatePointCloud",
+            extra={
+                "message": f"Authentication failed: {e}"
+            }
+        )
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
     finally:
         storage.delete(source)

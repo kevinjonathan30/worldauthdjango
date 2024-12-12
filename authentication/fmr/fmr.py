@@ -9,13 +9,10 @@ import copy
 import open3d
 import torch
 import torch.utils.data
-import logging
 import numpy as np
 from .model import PointNet, Decoder, SolveRegistration
 import open3d as o3d
 from django.conf import settings
-
-logger = logging.getLogger('authentication')
 
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), os.pardir)))
 
@@ -25,7 +22,6 @@ def evaluate_registration(source, target, transformation, threshold=0.7):
     target_temp = copy.deepcopy(target)
     source_temp.transform(transformation)
     evaluation = o3d.pipelines.registration.evaluate_registration(source_temp, target_temp, threshold)
-    logger.info(evaluation)
     return evaluation.fitness
 
 

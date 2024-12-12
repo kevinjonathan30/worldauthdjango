@@ -1,5 +1,4 @@
 import os
-import logging
 
 import open3d as o3d
 import numpy as np
@@ -12,8 +11,7 @@ import google.oauth2.service_account
 from django.conf import settings
 
 from .models import AuthenticationMethod
-
-logger = logging.getLogger('authentication')
+from logger import log_error
 
 def write_point_cloud(filename, fileContent, format='ply', write_ascii=False, compressed=True):
     points_np = np.loadtxt(fileContent)
@@ -52,5 +50,10 @@ def get_method_config():
         else:
             return AuthenticationMethod.ICP
     else:
-        logger.error(f"Error: {response.status_code}, {response.text}")
+        log_error(
+            "getMethodConfig",
+            extra={
+                "message": f"Error: {response.status_code}, {response.text}"
+            }
+        )
         return AuthenticationMethod.ICP

@@ -1,10 +1,7 @@
 import torch
 import torch.nn as nn
-import torch.nn.functional as F
-from .utils import se3, so3, invmat, data_utils
-import logging
-
-logger = logging.getLogger('authentication')
+import torch.nn.functional
+from .utils import se3, invmat, data_utils
 
 def flatten(x):
 	return x.view(x.size(0), -1)
@@ -199,7 +196,7 @@ class PointLK(nn.Module):
 			pinv = B.bmm(Jt) # [B, 6, K]
 			return pinv
 		except RuntimeError as err:
-			logger.info(err)
+			print(err)
 			self.last_err = err
 			g = torch.eye(4).to(p0).view(1, 4, 4).expand(p0.size(0), 4, 4).contiguous()
 			
