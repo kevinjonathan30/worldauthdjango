@@ -132,11 +132,11 @@ def authenticate(request):
                 logger.info("Using Fast Global Registration")
                 result = icp.execute_icp(source, target, fast_registration=True, threshold=threshold)
             elif method == AuthenticationMethod.PNLK:
-                threshold=0.525
+                threshold=0.58
                 logger.info("Using PointNetLK")
                 result = pointnetlk.execute_pointnetlk(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FMR:
-                threshold=0.525
+                threshold=0.66
                 logger.info("Using Feature-metric Registration")
                 result = fmr.execute_fmr(source, target, threshold=threshold)
             elif method == AuthenticationMethod.DGMR:
