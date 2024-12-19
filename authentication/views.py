@@ -166,7 +166,7 @@ def authenticate(request):
         log_info(
             "authenticatePointCloud",
             extra={
-                "method": method,
+                "method": method.value,
                 "fitness": highest_result,
                 "threshold": threshold,
                 "authTime": authentication_time
