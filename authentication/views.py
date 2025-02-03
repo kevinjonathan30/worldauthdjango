@@ -143,19 +143,19 @@ def authenticate(request):
             target = os.path.join(settings.MEDIA_ROOT, authorization, file)
 
             if method == AuthenticationMethod.ICP:
-                threshold=0.545
+                threshold=0.35
                 result = icp.execute_icp(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FGR:
-                threshold=0.54
+                threshold=0.32
                 result = icp.execute_icp(source, target, fast_registration=True, threshold=threshold)
             elif method == AuthenticationMethod.PNLK:
-                threshold=0.58
+                threshold=0.345
                 result = pointnetlk.execute_pointnetlk(source, target, threshold=threshold)
             elif method == AuthenticationMethod.FMR:
-                threshold=0.66
+                threshold=0.35
                 result = fmr.execute_fmr(source, target, threshold=threshold)
             elif method == AuthenticationMethod.DGMR:
-                threshold=0.675
+                threshold=0.49
                 result = deepgmr.execute_deepgmr(source, target, threshold=threshold)
             
             highest_result = max(highest_result, result)
