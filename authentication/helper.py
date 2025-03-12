@@ -43,7 +43,7 @@ def get_method_config():
 
     if response.status_code == 200:
         config_data = response.json()
-        key = "authentication_method"
+        key = "authenticationMethod"
 
         if 'parameters' in config_data and key in config_data['parameters']:
             return AuthenticationMethod(config_data['parameters'][key]['defaultValue']['value'])
