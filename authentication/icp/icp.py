@@ -13,8 +13,7 @@ import open3d as o3d  # Open3D ライブラリ (Library)
 # このコードは、2つの点群データセット（`test2.pcd` と `test3.pcd`）を入力として受け取り、それらを適切に位置合わせます。
 
 def execute_icp(source, target, fast_registration=False, threshold=0.7):
-    source = o3d.io.read_point_cloud(source)
-    target = o3d.io.read_point_cloud(target)
+    # Assume source and target are already open3d.geometry.PointCloud objects
 
     voxel_size = 0.1  # このデータセットに対して10cmを意味します (Means 10cm for this dataset)
     

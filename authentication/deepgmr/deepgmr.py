@@ -6,18 +6,10 @@ Author: Wentao Yuan
 import os
 import numpy as np
 import torch
-from time import time
-import open3d as o3d
 from django.conf import settings
 
 from .model import DeepGMR
 from .data import get_rri
-
-def load_point_cloud(file_path):
-    """Load a point cloud from a file and return it as a numpy array."""
-    pcd = o3d.io.read_point_cloud(file_path)
-    pcd = pcd.voxel_down_sample(0.1)
-    return np.asarray(pcd.points)
 
 def preprocess_point_cloud(pcd, use_rri, k=None):
     """Preprocess the point cloud data, optionally adding RRI features."""
@@ -90,21 +82,24 @@ def options():
         batch_size = 32  # Batch size for the DataLoader
         d_model = 1024  # Model dimensionality
         n_clusters = 16  # Number of clusters
-        use_rri = True  # Whether to use RRI
+        use_rri = False  # Whether to use RRI
         use_tnet = False  # Whether to use T-Net
         k = 20  # Parameter for model (e.g., k-NN)
 
     return Args()
 
-def execute_deepgmr(source, target, threshold=0.7):
+def execute_deepgmr(pcd_source, pcd_target, threshold=0.7):
     args = options()
 
     torch.set_num_threads(1)
     model = DeepGMR(args).cpu()
     
-    # Directly load and preprocess point clouds
-    source_pcd = load_point_cloud(source)
-    target_pcd = load_point_cloud(target)
+    # Assume pcd_source and pcd_target are already open3d.geometry.PointCloud objects
+    pcd_source = pcd_source.voxel_down_sample(0.1)
+    source_pcd = np.asarray(pcd_source.points)
+
+    pcd_target = pcd_target.voxel_down_sample(0.1)
+    target_pcd = np.asarray(pcd_target.points)
 
     source_pcd = preprocess_point_cloud(source_pcd, args.use_rri, args.k)
     target_pcd = preprocess_point_cloud(target_pcd, args.use_rri, args.k)

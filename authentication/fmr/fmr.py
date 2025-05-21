@@ -6,9 +6,7 @@ Date: 2021-04-13
 import os
 import sys
 import copy
-import open3d
 import torch
-import torch.utils.data
 import numpy as np
 from .model import PointNet, Decoder, SolveRegistration
 import open3d as o3d
@@ -52,25 +50,15 @@ class Demo:
 
             return g_hat
 
-def execute_fmr(source, target, threshold=0.7):
-    p0_src = open3d.io.read_point_cloud(target)
-    downpcd0 = p0_src.voxel_down_sample(voxel_size=0.1)
+def execute_fmr(pcd_source, pcd_target, threshold=0.7):
+    # pcd_source: Open3D PointCloud for source
+    # pcd_target: Open3D PointCloud for target
+
+    downpcd0 = pcd_target.voxel_down_sample(voxel_size=0.1)
     p0 = np.asarray(downpcd0.points)
-    p0 = np.expand_dims(p0,0)
+    p0 = np.expand_dims(p0, 0)
 
-    '''
-    # generate random rotation sample
-    trans = transforms.RandomTransformSE3(0.8, True)
-    p0_src_tensor = torch.tensor((np.asarray(p0_src.points)),dtype=torch.float)
-    p0_tensor_transformed = trans(p0_src_tensor)
-    p1_src = p0_tensor_transformed.cpu().numpy()
-    pcd = open3d.geometry.PointCloud()
-    pcd.points = open3d.utility.Vector3dVector(p1_src)
-    open3d.io.write_point_cloud(path1, pcd)
-    '''
-
-    p1 = open3d.io.read_point_cloud(source)
-    downpcd1 = p1.voxel_down_sample(voxel_size=0.1)
+    downpcd1 = pcd_source.voxel_down_sample(voxel_size=0.1)
     p1 = np.asarray(downpcd1.points)
     p1 = np.expand_dims(p1, 0)
     

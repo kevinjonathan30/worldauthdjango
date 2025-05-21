@@ -5,11 +5,6 @@ import numpy as np
 from .model import PointLK, PointNet_features
 from django.conf import settings
 
-def load_ply_file(filepath):
-    pcd = o3d.io.read_point_cloud(filepath)
-    pcd = pcd.voxel_down_sample(0.1)
-    return np.asarray(pcd.points)
-
 def evaluate_registration(target, source, est_T, threshold=0.7):
     target, source, est_T = target[0], source[0], est_T[0]
     transformed_source = np.matmul(est_T[0:3, 0:3], source.T).T + est_T[0:3, 3]
@@ -25,11 +20,6 @@ def evaluate_registration(target, source, est_T, threshold=0.7):
     evaluation = o3d.pipelines.registration.evaluate_registration(transformed_source_, target_, threshold)
     print(evaluation)
     return evaluation.fitness
-
-def read_data(source_ply, target_ply):
-    source = load_ply_file(source_ply)
-    target = load_ply_file(target_ply)
-    return torch.tensor(source, dtype=torch.float32), torch.tensor(target, dtype=torch.float32)
 
 def test(args, model, data, threshold):
     model.eval()
@@ -58,13 +48,22 @@ def options():
 
     return Args()
 
-def execute_pointnetlk(source, target, threshold=0.7):
+def execute_pointnetlk(pcd_source, pcd_target, threshold=0.7):
     args = options()
 
     torch.set_num_threads(1)
     if not torch.cuda.is_available():
         args.device = 'cpu'
     args.device = torch.device(args.device)
+
+    # Assume pcd_source and pcd_target are already open3d.geometry.PointCloud objects
+    pcd_source = pcd_source.voxel_down_sample(0.1)
+    source = torch.tensor(np.asarray(pcd_source.points), dtype=torch.float32)
+
+    pcd_target = pcd_target.voxel_down_sample(0.1)
+    target = torch.tensor(np.asarray(pcd_target.points), dtype=torch.float32)
+
+    data = (source, target)
 
     # Create PointNetLK Model.
     ptnet = PointNet_features(emb_dims=args.emb_dims, symfn=args.symfn)
@@ -75,5 +74,4 @@ def execute_pointnetlk(source, target, threshold=0.7):
         model.load_state_dict(torch.load(args.pretrained, map_location='cpu'))
     model.to(args.device)
 
-    data = read_data(source, target)
     return test(args, model, data, threshold)

@@ -11,43 +11,6 @@ from .visu_util import visualize
 
 import open3d as o3d
 
-def evaluate_registration(pts1, pts2, T_21, T_gt, idx, threshold=0.7):
-    """
-    Visualize the transformed point cloud based on the transformation matrix T_21.
-
-    Args:
-        pts1 (torch.Tensor): The source point cloud tensor of shape (B, N, 3).
-        pts2 (torch.Tensor): The target point cloud tensor of shape (B, N, 3).
-        T_21 (torch.Tensor): The transformation matrix tensor of shape (B, 4, 4).
-        T_gt (torch.Tensor): The ground truth transformation matrix tensor of shape (B, 4, 4).
-        idx (int): The index of the point cloud to visualize.
-    """
-    # Extract the specific point cloud and transformation matrix for the given index
-    pts1_np = pts1[idx].detach().cpu().numpy()
-    pts2_np = pts2[idx].detach().cpu().numpy()
-    T_21_np = T_21[idx].detach().cpu().numpy()
-
-    # Apply the transformation to the point cloud
-    transformed_pts2 = (pts2_np @ T_21_np[:3, :3].T) + T_21_np[:3, 3]
-
-    # Convert numpy arrays to Open3D point clouds
-    pcd1 = o3d.geometry.PointCloud()  # Original pts1
-    pcd2 = o3d.geometry.PointCloud()  # Original pts2
-    pcd3 = o3d.geometry.PointCloud()  # Transformed pts2
-
-    # Set the points for the point cloud objects
-    pcd1.points = o3d.utility.Vector3dVector(pts1_np)
-    pcd2.points = o3d.utility.Vector3dVector(pts2_np)
-    pcd3.points = o3d.utility.Vector3dVector(transformed_pts2)
-
-    evaluation = o3d.pipelines.registration.evaluate_registration(pcd1, pcd3, threshold)
-    return evaluation.fitness
-
-# Example usage
-# Assuming `self` is an instance of DeepGMR
-# Example usage within a method of DeepGMR class:
-# visualize_transformed_point_clouds(self.pts1, self.T_12, self.T_gt, 0)
-
 def gmm_params(gamma, pts):
     '''
     Inputs:
@@ -239,4 +202,30 @@ class DeepGMR(nn.Module):
         return fig
     
     def evaluate_registration(self, idx, threshold=0.7):
-        return evaluate_registration(self.pts1, self.pts2, self.T_21, self.T_gt, idx, threshold)
+        """
+        Visualize the transformed point cloud based on the transformation matrix T_21.
+
+        Args:
+            idx (int): The index of the point cloud to visualize.
+            threshold (float): The fitness threshold for registration evaluation.
+        Returns:
+            float: The fitness score from Open3D registration evaluation.
+        """
+        # Extract the specific point cloud and transformation matrix for the given index
+        pts1_np = self.pts1[idx].detach().cpu().numpy()
+        pts2_np = self.pts2[idx].detach().cpu().numpy()
+        T_21_np = self.T_21[idx].detach().cpu().numpy()
+
+        # Apply the transformation to the point cloud
+        transformed_pts2 = (pts2_np @ T_21_np[:3, :3].T) + T_21_np[:3, 3]
+
+        # Convert numpy arrays to Open3D point clouds
+        pcd1 = o3d.geometry.PointCloud()  # Original pts1
+        pcd3 = o3d.geometry.PointCloud()  # Transformed pts2
+
+        # Set the points for the point cloud objects
+        pcd1.points = o3d.utility.Vector3dVector(pts1_np)
+        pcd3.points = o3d.utility.Vector3dVector(transformed_pts2)
+
+        evaluation = o3d.pipelines.registration.evaluate_registration(pcd1, pcd3, threshold)
+        return evaluation.fitness
