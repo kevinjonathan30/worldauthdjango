@@ -59,8 +59,11 @@ def execute_icp(source, target, fast_registration=False, threshold=0.7):
 # 点群データの法線を推定する関数 (Function to estimate normals for a point cloud)
 def estimate_normals(pcd, voxel_size):
     radius_normal = voxel_size * 2
+    # Estimate normals first
     pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
-    pcd.orient_normals_consistent_tangent_plane(100)
+    # Ensure normals are computed before orienting
+    if pcd.has_normals() and len(pcd.normals) > 0:
+        pcd.orient_normals_consistent_tangent_plane(100)
 
 # 点群データの前処理関数 (Preprocessing function for point cloud data)
 def preprocess_point_cloud(pcd, voxel_size):

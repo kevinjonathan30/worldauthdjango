@@ -15,6 +15,7 @@ from datetime import datetime
 from time import time
 from logger import log_debug, log_info, log_error
 import open3d as o3d
+import tempfile
 
 def index(request):
     log_debug("accessIndex", extra={"message": "GET OUT OF HERE."})
@@ -91,9 +92,12 @@ def authenticate(request):
     files = request.FILES.getlist('files')
     threshold = 0.7
     try:
-        # Read uploaded file directly into Open3D point cloud (avoid IO)
+        # Use tempfile to read uploaded file into Open3D point cloud (workaround for bytes issue)
         uploaded_bytes = files[0].read()
-        pcd_source = o3d.io.read_point_cloud_from_bytes(uploaded_bytes, format='ply')
+        with tempfile.NamedTemporaryFile(suffix=".ply") as tmp:
+            tmp.write(uploaded_bytes)
+            tmp.flush()
+            pcd_source = o3d.io.read_point_cloud(tmp.name)
         highest_result = 0
         for file in os.listdir(os.path.join(settings.MEDIA_ROOT, authorization)):
             if file == "source.ply":
@@ -150,11 +154,16 @@ def authenticate_two(request):
     targetFile = request.FILES.getlist('targetFile')
     threshold = 0.7
     try:
-        # Read both uploaded files directly into Open3D point clouds (avoid IO)
+        # Use tempfile to read both uploaded files into Open3D point clouds
         source_bytes = sourceFile[0].read()
         target_bytes = targetFile[0].read()
-        pcd_source = o3d.io.read_point_cloud_from_bytes(source_bytes, format='ply')
-        pcd_target = o3d.io.read_point_cloud_from_bytes(target_bytes, format='ply')
+        with tempfile.NamedTemporaryFile(suffix=".ply") as tmp_source, tempfile.NamedTemporaryFile(suffix=".ply") as tmp_target:
+            tmp_source.write(source_bytes)
+            tmp_source.flush()
+            tmp_target.write(target_bytes)
+            tmp_target.flush()
+            pcd_source = o3d.io.read_point_cloud(tmp_source.name)
+            pcd_target = o3d.io.read_point_cloud(tmp_target.name)
         if authMethod == "ICP":
             threshold = 0.35
             result = icp.execute_icp(pcd_source, pcd_target, threshold=threshold)

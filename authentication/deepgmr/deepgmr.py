@@ -75,7 +75,7 @@ def options():
     class Args:
         data_file = os.path.join(settings.BASE_DIR, "authentication", "deepgmr", "data", "test", "modelnet_noisy.h5")  # Specify the data file path if needed
         results_dir = "results/"  # Directory to save results
-        checkpoint = os.path.join(settings.BASE_DIR, "authentication", "deepgmr", "models", "modelnet_noisy.pth")  # Path to the model checkpoint
+        checkpoint = os.path.join(settings.BASE_DIR, "authentication", "deepgmr", "models", "checkpoint_epoch-100.pth")  # Path to the model checkpoint
         save_results = False  # Whether to save the results or not
         rmse_thresh = 0.2  # RMSE threshold
         n_points = 1024  # Number of points in the dataset
