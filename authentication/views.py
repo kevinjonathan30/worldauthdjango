@@ -90,17 +90,15 @@ def authenticate(request):
         authMethod = "ICP"
     start = time()
     files = request.FILES.getlist('files')
+    storage = OverwriteStorage()
+    sourcePath = os.path.join(settings.MEDIA_ROOT, authorization, "source.ply")
     threshold = 0.7
     try:
-        # Use tempfile to read uploaded file into Open3D point cloud (workaround for bytes issue)
-        uploaded_bytes = files[0].read()
-        with tempfile.NamedTemporaryFile(suffix=".ply") as tmp:
-            tmp.write(uploaded_bytes)
-            tmp.flush()
-            pcd_source = o3d.io.read_point_cloud(tmp.name)
+        write_point_cloud(sourcePath, ContentFile(files[0].read()))
+        pcd_source = o3d.io.read_point_cloud(sourcePath)
         highest_result = 0
         for file in os.listdir(os.path.join(settings.MEDIA_ROOT, authorization)):
-            if file == "source.ply":
+            if file == "source.ply" or file == "uploaded.ply":
                 continue
             target = os.path.join(settings.MEDIA_ROOT, authorization, file)
             pcd_target = o3d.io.read_point_cloud(target)
@@ -136,6 +134,8 @@ def authenticate(request):
     except Exception as e:
         log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}"})
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
+    finally:
+        storage.delete(sourcePath)
 
 @csrf_exempt
 def authenticate_two(request):
@@ -152,18 +152,14 @@ def authenticate_two(request):
     start = time()
     sourceFile = request.FILES.getlist('sourceFile')
     targetFile = request.FILES.getlist('targetFile')
-    threshold = 0.7
+    storage = OverwriteStorage()
+    sourcePath = os.path.join(settings.MEDIA_ROOT, authorization, "sourceFile.ply")
+    targetPath = os.path.join(settings.MEDIA_ROOT, authorization, "targetFile.ply")
+    write_point_cloud(sourcePath, ContentFile(sourceFile[0].read()))
+    write_point_cloud(targetPath, ContentFile(targetFile[0].read()))
     try:
-        # Use tempfile to read both uploaded files into Open3D point clouds
-        source_bytes = sourceFile[0].read()
-        target_bytes = targetFile[0].read()
-        with tempfile.NamedTemporaryFile(suffix=".ply") as tmp_source, tempfile.NamedTemporaryFile(suffix=".ply") as tmp_target:
-            tmp_source.write(source_bytes)
-            tmp_source.flush()
-            tmp_target.write(target_bytes)
-            tmp_target.flush()
-            pcd_source = o3d.io.read_point_cloud(tmp_source.name)
-            pcd_target = o3d.io.read_point_cloud(tmp_target.name)
+        pcd_source = o3d.io.read_point_cloud(sourcePath)
+        pcd_target = o3d.io.read_point_cloud(targetPath)
         if authMethod == "ICP":
             threshold = 0.35
             result = icp.execute_icp(pcd_source, pcd_target, threshold=threshold)
@@ -193,3 +189,6 @@ def authenticate_two(request):
     except Exception as e:
         log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}"})
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
+    finally:
+        storage.delete(sourcePath)
+        storage.delete(targetPath) 
