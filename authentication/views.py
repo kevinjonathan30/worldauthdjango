@@ -15,7 +15,6 @@ from datetime import datetime
 from time import time
 from logger import log_debug, log_info, log_error
 import open3d as o3d
-import tempfile
 
 def index(request):
     log_debug("accessIndex", extra={"message": "GET OUT OF HERE."})
@@ -150,13 +149,12 @@ def authenticate_two(request):
     if not authMethod:
         authMethod = "ICP"
     start = time()
-    sourceFile = request.FILES.getlist('sourceFile')
-    targetFile = request.FILES.getlist('targetFile')
+    files = request.FILES.getlist('files')
     storage = OverwriteStorage()
     sourcePath = os.path.join(settings.MEDIA_ROOT, authorization, "sourceFile.ply")
     targetPath = os.path.join(settings.MEDIA_ROOT, authorization, "targetFile.ply")
-    write_point_cloud(sourcePath, ContentFile(sourceFile[0].read()))
-    write_point_cloud(targetPath, ContentFile(targetFile[0].read()))
+    write_point_cloud(sourcePath, ContentFile(files[0].read()))
+    write_point_cloud(targetPath, ContentFile(files[1].read()))
     try:
         pcd_source = o3d.io.read_point_cloud(sourcePath)
         pcd_target = o3d.io.read_point_cloud(targetPath)
