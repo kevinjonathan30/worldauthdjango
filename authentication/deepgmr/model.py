@@ -43,6 +43,12 @@ def gmm_register(pi_s, mu_s, mu_t, sigma_t):
     c_t = pi_s.unsqueeze(1) @ mu_t
     Ms = torch.sum((pi_s.unsqueeze(2) * (mu_s - c_s)).unsqueeze(3) @
                    (mu_t - c_t).unsqueeze(2) @ sigma_t.inverse(), dim=1)
+
+    # Add epsilon regularization to sigma_t
+    epsilon = 1e-6
+    sigma_t += epsilon * torch.eye(sigma_t.size(-1)).to(sigma_t.device)
+
+    # Proceed with SVD
     U, _, V = torch.svd(Ms.cpu())
     U = U.cpu()
     V = V.cpu()
