@@ -28,7 +28,9 @@ def get_point_cloud(request):
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
     try:
-        pcd_list = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
+        user_folder = os.path.join(settings.MEDIA_ROOT, authorization)
+        os.makedirs(user_folder, exist_ok=True)
+        pcd_list = os.listdir(user_folder)
         return JsonResponse({'success': True, 'data': pcd_list}, status=200)
     except Exception as e:
         log_error("getPointCloud", extra={"message": f"Failed to list point clouds: {e}"})
@@ -190,3 +192,28 @@ def authenticate_two(request):
     finally:
         storage.delete(sourcePath)
         storage.delete(targetPath) 
+
+def save_data(request):
+    if request.method != 'POST':
+        return JsonResponse({'error': 'Invalid request'}, status=400)
+    authorization = request.headers.get('Authorization')
+    if not authorization:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
+        return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
+    zip_file = request.FILES.getlist('files')[0]
+    original_file_name = zip_file.name
+    
+    # Generate the file path using the original file name
+    user_folder = os.path.join(settings.MEDIA_ROOT, authorization)
+    os.makedirs(user_folder, exist_ok=True)
+    file_path = os.path.join(user_folder, original_file_name)
+    
+    try:
+        # Save the uploaded file
+        with open(file_path, 'wb') as f:
+            f.write(zip_file.read())
+        return JsonResponse({'success': True}, status=200)
+    except Exception as e:
+        log_error("saveData", extra={"message": f"Failed to save data: {e}"})
+        return JsonResponse({'success': False, 'error': 'Failed to save data.'}, status=500)
