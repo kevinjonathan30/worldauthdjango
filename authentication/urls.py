@@ -10,4 +10,5 @@ urlpatterns = [
     path('authenticate/', views.authenticate, name="authenticate"),
     path('authenticate_two/', views.authenticate_two, name="authenticate_two"),
     path('save_data/', views.save_data, name="save_data"),
+    path('download_all/', views.download_all, name='download_all'),
 ]
