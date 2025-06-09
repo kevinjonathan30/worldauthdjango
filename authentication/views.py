@@ -223,29 +223,25 @@ def save_data(request):
     
 @csrf_exempt
 def download_all(request):
-    # Ensure the request is authenticated
-    authorization = request.headers.get('Authorization')
-    if not authorization:
-        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    # Path to the root media directory
+    media_root = settings.MEDIA_ROOT
     
-    user_folder = os.path.join(settings.MEDIA_ROOT, authorization)
-    
-    # Check if the folder exists
-    if not os.path.exists(user_folder):
-        return JsonResponse({'error': 'Folder does not exist.'}, status=404)
+    # Check if the media root exists
+    if not os.path.exists(media_root):
+        return JsonResponse({'error': 'Media folder does not exist.'}, status=404)
     
     # Create a ZIP file in memory
     zip_buffer = BytesIO()
     with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for root, dirs, files in os.walk(user_folder):
+        for root, dirs, files in os.walk(media_root):
             for file in files:
                 file_path = os.path.join(root, file)
-                # Add file to the ZIP archive
-                zip_file.write(file_path, os.path.relpath(file_path, user_folder))
+                # Add file to the ZIP archive with a relative path
+                zip_file.write(file_path, os.path.relpath(file_path, media_root))
     
     zip_buffer.seek(0)  # Rewind the buffer to the beginning
     
     # Prepare the response
     response = HttpResponse(zip_buffer, content_type='application/zip')
-    response['Content-Disposition'] = f'attachment; filename="{authorization}_data.zip"'
+    response['Content-Disposition'] = 'attachment; filename="all_media_data.zip"'
     return response
