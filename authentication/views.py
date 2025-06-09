@@ -15,6 +15,8 @@ from datetime import datetime
 from time import time
 from logger import log_debug, log_info, log_error
 import open3d as o3d
+import zipfile
+from io import BytesIO
 
 def index(request):
     log_debug("accessIndex", extra={"message": "GET OUT OF HERE."})
@@ -193,6 +195,7 @@ def authenticate_two(request):
         storage.delete(sourcePath)
         storage.delete(targetPath) 
 
+@csrf_exempt
 def save_data(request):
     if request.method != 'POST':
         return JsonResponse({'error': 'Invalid request'}, status=400)
@@ -217,3 +220,32 @@ def save_data(request):
     except Exception as e:
         log_error("saveData", extra={"message": f"Failed to save data: {e}"})
         return JsonResponse({'success': False, 'error': 'Failed to save data.'}, status=500)
+    
+@csrf_exempt
+def download_all(request):
+    # Ensure the request is authenticated
+    authorization = request.headers.get('Authorization')
+    if not authorization:
+        return JsonResponse({'error': 'Unauthorized'}, status=401)
+    
+    user_folder = os.path.join(settings.MEDIA_ROOT, authorization)
+    
+    # Check if the folder exists
+    if not os.path.exists(user_folder):
+        return JsonResponse({'error': 'Folder does not exist.'}, status=404)
+    
+    # Create a ZIP file in memory
+    zip_buffer = BytesIO()
+    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        for root, dirs, files in os.walk(user_folder):
+            for file in files:
+                file_path = os.path.join(root, file)
+                # Add file to the ZIP archive
+                zip_file.write(file_path, os.path.relpath(file_path, user_folder))
+    
+    zip_buffer.seek(0)  # Rewind the buffer to the beginning
+    
+    # Prepare the response
+    response = HttpResponse(zip_buffer, content_type='application/zip')
+    response['Content-Disposition'] = f'attachment; filename="{authorization}_data.zip"'
+    return response
