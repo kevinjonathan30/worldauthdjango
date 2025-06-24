@@ -17,6 +17,7 @@ from logger import log_debug, log_info, log_error
 import open3d as o3d
 import zipfile
 from io import BytesIO
+import shutil
 
 def index(request):
     log_debug("accessIndex", extra={"message": "GET OUT OF HERE."})
@@ -42,18 +43,27 @@ def get_point_cloud(request):
 def delete_point_cloud(request):
     if request.method != 'DELETE':
         return JsonResponse({'error': 'Invalid request'}, status=400)
+    
     authorization = request.headers.get('Authorization')
     file_request = request.headers.get('FileRequest')
     if not authorization:
         return JsonResponse({'error': 'Unauthorized'}, status=401)
     if not file_request:
         return JsonResponse({'error': 'Invalid/No filename'}, status=400)
+    
     storage = OverwriteStorage()
     try:
-        storage.delete(os.path.join(authorization, file_request))
-        remaining_files = os.listdir(os.path.join(settings.MEDIA_ROOT, authorization))
+        file_path = os.path.join(settings.MEDIA_ROOT, authorization, file_request)
+        if os.path.exists(file_path):
+            storage.delete(file_path)
+        
+        dir_path = os.path.join(settings.MEDIA_ROOT, authorization)
+        remaining_files = [
+            f for f in os.listdir(dir_path) if not f.startswith('.')
+        ]
         if not remaining_files:
-            storage.delete(authorization)
+            shutil.rmtree(dir_path, ignore_errors=True)
+        
         return JsonResponse({'success': True}, status=200)
     except Exception as e:
         log_error("deletePointCloud", extra={"message": f"Failed to delete point cloud: {e}"})
