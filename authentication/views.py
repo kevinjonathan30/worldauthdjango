@@ -8,7 +8,7 @@ from authentication.icp import icp
 from authentication.pointnetlk import pointnetlk
 from authentication.fmr import fmr
 from authentication.deepgmr import deepgmr
-from authentication.helper import write_point_cloud
+from authentication.helper import write_point_cloud, delete_parent_directory
 
 import os
 from datetime import datetime
@@ -57,12 +57,7 @@ def delete_point_cloud(request):
         if os.path.exists(file_path):
             storage.delete(file_path)
         
-        dir_path = os.path.join(settings.MEDIA_ROOT, authorization)
-        remaining_files = [
-            f for f in os.listdir(dir_path) if not f.startswith('.')
-        ]
-        if not remaining_files:
-            shutil.rmtree(dir_path, ignore_errors=True)
+        delete_parent_directory(authorization)
         
         return JsonResponse({'success': True}, status=200)
     except Exception as e:
@@ -149,6 +144,7 @@ def authenticate(request):
         return JsonResponse({'error': 'No registered point cloud.'}, status=400)
     finally:
         storage.delete(sourcePath)
+        delete_parent_directory(authorization)
 
 @csrf_exempt
 def authenticate_two(request):
@@ -204,54 +200,4 @@ def authenticate_two(request):
     finally:
         storage.delete(sourcePath)
         storage.delete(targetPath) 
-
-@csrf_exempt
-def save_data(request):
-    if request.method != 'POST':
-        return JsonResponse({'error': 'Invalid request'}, status=400)
-    authorization = request.headers.get('Authorization')
-    if not authorization:
-        return JsonResponse({'error': 'Unauthorized'}, status=401)
-    if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
-        return JsonResponse({'error': 'Invalid number of files were uploaded.'}, status=400)
-    zip_file = request.FILES.getlist('files')[0]
-    original_file_name = zip_file.name
-    
-    # Generate the file path using the original file name
-    user_folder = os.path.join(settings.MEDIA_ROOT, authorization)
-    os.makedirs(user_folder, exist_ok=True)
-    file_path = os.path.join(user_folder, original_file_name)
-    
-    try:
-        # Save the uploaded file
-        with open(file_path, 'wb') as f:
-            f.write(zip_file.read())
-        return JsonResponse({'success': True}, status=200)
-    except Exception as e:
-        log_error("saveData", extra={"message": f"Failed to save data: {e}"})
-        return JsonResponse({'success': False, 'error': 'Failed to save data.'}, status=500)
-    
-@csrf_exempt
-def download_all(request):
-    # Path to the root media directory
-    media_root = settings.MEDIA_ROOT
-    
-    # Check if the media root exists
-    if not os.path.exists(media_root):
-        return JsonResponse({'error': 'Media folder does not exist.'}, status=404)
-    
-    # Create a ZIP file in memory
-    zip_buffer = BytesIO()
-    with zipfile.ZipFile(zip_buffer, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for root, dirs, files in os.walk(media_root):
-            for file in files:
-                file_path = os.path.join(root, file)
-                # Add file to the ZIP archive with a relative path
-                zip_file.write(file_path, os.path.relpath(file_path, media_root))
-    
-    zip_buffer.seek(0)  # Rewind the buffer to the beginning
-    
-    # Prepare the response
-    response = HttpResponse(zip_buffer, content_type='application/zip')
-    response['Content-Disposition'] = 'attachment; filename="all_media_data.zip"'
-    return response
+        delete_parent_directory(authorization)
