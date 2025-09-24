@@ -16,6 +16,31 @@ def main():
             "forget to activate a virtual environment?"
         ) from exc
 
+    # If the user runs the development server, print the local docs URL for Django Ninja.
+    try:
+        if len(sys.argv) >= 2 and sys.argv[1].startswith('runserver'):
+            # The Django autoreloader runs the code twice: a parent process and
+            # a child where the server actually runs. To avoid printing twice,
+            # only print in the child process (RUN_MAIN='true'). Also print if
+            # the user explicitly disables the reloader via --noreload.
+            reload_disabled = any(arg.startswith('--noreload') for arg in sys.argv)
+            run_main = os.environ.get('RUN_MAIN') == 'true'
+
+            if run_main or reload_disabled:
+                host = '127.0.0.1'
+                port = '8000'
+                # If the user supplied a different addrport, try to extract it
+                if len(sys.argv) >= 3 and sys.argv[2]:
+                    addrport = sys.argv[2]
+                    if ':' in addrport:
+                        host, port = addrport.split(':', 1)
+                    else:
+                        port = addrport
+                print(f"\nWorldAuth API docs available at: http://{host}:{port}/api/docs#/\n")
+    except Exception:
+        # Never let this logging interfere with management command execution
+        pass
+
     execute_from_command_line(sys.argv)
 
 

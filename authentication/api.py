@@ -1,4 +1,13 @@
-from ninja import Router
+from ninja import Router, File, UploadedFile, Header
+from ninja.responses import Response
+from typing import Optional
+from .schemas import (
+    PointCloudList,
+    AuthResult,
+    SuccessResponse,
+    ErrorResponse,
+    AuthMethod,
+)
 from django.http import HttpResponse
 from django.conf import settings
 from .storage import OverwriteStorage
@@ -16,99 +25,136 @@ from logger import log_debug, log_info, log_error
 
 router = Router()
 
-@router.get("/")
+@router.get("/", include_in_schema=False)
 def index(request):
     log_debug("accessIndex", extra={"message": "GET OUT OF HERE."})
     return HttpResponse("GET OUT OF HERE.")
 
-@router.get("/get_point_cloud")
-def get_point_cloud(request):
-    authorization = request.headers.get('Authorization')
-    if not authorization:
-        return {"error": "Unauthorized"}
+@router.get(
+    "/get-point-cloud",
+    response={200: PointCloudList, 401: ErrorResponse, 500: ErrorResponse},
+)
+def get_point_cloud(request, authorization: str = Header(..., alias="U-Authorization")):
+    """List uploaded point cloud filenames for the authenticated user.
+
+    The U-Authorization header is required and used as the user folder name.
+    """
     try:
         user_folder = os.path.join(settings.MEDIA_ROOT, authorization)
         os.makedirs(user_folder, exist_ok=True)
         pcd_list = os.listdir(user_folder)
-        return {"success": True, "data": pcd_list}
+        return Response({"success": True, "data": pcd_list}, status=200)
     except Exception as e:
-        log_error("getPointCloud", extra={"message": f"Failed to list point clouds: {e}"})
-        return {"success": True, "data": []}
+        # Log full exception and return the error text temporarily to help debugging.
+        import traceback
+        tb = traceback.format_exc()
+        log_error("getPointCloud", extra={"message": f"Failed to list point clouds: {e}", "traceback": tb})
+        # Return the exception message in the response temporarily so Postman shows the real error.
+        return Response({"error": "Failed to list point clouds.", "detail": str(e)}, status=500)
 
-@router.delete("/delete_point_cloud")
-def delete_point_cloud(request):
-    authorization = request.headers.get('Authorization')
-    file_request = request.headers.get('FileRequest')
-    if not authorization:
-        return {"error": "Unauthorized"}
-    if not file_request:
-        return {"error": "Invalid/No filename"}
+@router.delete(
+    "/delete-point-cloud",
+    response={200: SuccessResponse, 401: ErrorResponse, 400: ErrorResponse, 500: ErrorResponse},
+)
+def delete_point_cloud(request, authorization: str = Header(..., alias="U-Authorization"), FileRequest: str = Header(...)):
+    """Delete a specific point cloud file for the authorized user.
+
+    Headers:
+    - U-Authorization: user folder name (required)
+    - FileRequest: filename to delete (required)
+    """
     storage = OverwriteStorage()
     try:
-        file_path = os.path.join(settings.MEDIA_ROOT, authorization, file_request)
+        file_path = os.path.join(settings.MEDIA_ROOT, authorization, FileRequest)
         if os.path.exists(file_path):
             storage.delete(file_path)
         delete_parent_directory(authorization)
-        return {"success": True}
+        return Response({"success": True}, status=200)
     except Exception as e:
-        log_error("deletePointCloud", extra={"message": f"Failed to delete point cloud: {e}"})
-        return {"success": False, "error": "Failed to delete Point Cloud."}
+        import traceback
+        tb = traceback.format_exc()
+        log_error("deletePointCloud", extra={"message": f"Failed to delete point cloud: {e}", "traceback": tb})
+        return Response({"error": "Failed to delete Point Cloud.", "detail": str(e)}, status=500)
 
-@router.post("/register")
-def register(request):
-    authorization = request.headers.get('Authorization')
-    if not authorization:
-        return {"error": "Unauthorized"}
-    if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
-        return {"error": "Invalid number of files were uploaded."}
-    files = request.FILES.getlist('files')
+@router.post(
+    "/register",
+    response={200: SuccessResponse, 401: ErrorResponse, 400: ErrorResponse, 500: ErrorResponse},
+)
+def register(request, authorization: str = Header(..., alias="U-Authorization"), file: UploadedFile = File(...)):
+    """Upload/register a single point cloud file for the authorized user.
+
+    Headers:
+    - U-Authorization: user folder name (required)
+
+    Form-data:
+    - file: .ply file to upload
+    """
     now = datetime.now()
     dt_string = now.strftime("%d-%m-%Y-%H-%M-%S") + ".ply"
     try:
         file_path = os.path.join(settings.MEDIA_ROOT, authorization, dt_string)
-        write_point_cloud(file_path, ContentFile(files[0].read()))
-        return {"success": True}
+        # read once into memory to avoid consuming the stream twice
+        data = file.read()
+        write_point_cloud(file_path, ContentFile(data))
+        return Response({"success": True}, status=200)
     except Exception as e:
-        log_error("registerPointCloud", extra={"message": f"Failed to register point cloud: {e}"})
-        return {"success": False, "error": "Failed to register Point Cloud."}
+        import traceback
+        tb = traceback.format_exc()
+        log_error("registerPointCloud", extra={"message": f"Failed to register point cloud: {e}", "traceback": tb})
+        return Response({"error": "Failed to register Point Cloud.", "detail": str(e)}, status=500)
 
-@router.post("/authenticate")
-def authenticate(request):
-    authorization = request.headers.get('Authorization')
-    authMethod = request.headers.get('AuthorizationMethod')
+@router.post(
+    "/authenticate",
+    response={200: AuthResult, 401: ErrorResponse, 400: ErrorResponse, 500: ErrorResponse},
+)
+def authenticate(
+    request,
+    authorization: str = Header(..., alias="U-Authorization"),
+    authMethod: Optional[AuthMethod] = Header(None, alias="AuthorizationMethod"),
+    file: UploadedFile = File(...),
+):
+    """Authenticate uploaded file against all registered point clouds for the user.
+
+    Headers:
+    - U-Authorization: user folder name (required)
+    - AuthorizationMethod: optional (ICP, FGR, PNLK, FMR, DGMR)
+
+    Form-data:
+    - file: .ply file to authenticate
+    """
     if not authorization:
-        return {"error": "Unauthorized"}
-    if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 1:
-        return {"error": "Invalid number of files were uploaded."}
+        return Response({"error": "Unauthorized", "detail": ""}, status=401)
     if not authMethod:
-        authMethod = "ICP"
+        authMethod = AuthMethod.ICP
+
     start = time()
-    files = request.FILES.getlist('files')
     storage = OverwriteStorage()
     sourcePath = os.path.join(settings.MEDIA_ROOT, authorization, "source.ply")
     threshold = 0.7
     try:
-        write_point_cloud(sourcePath, ContentFile(files[0].read()))
+        # read the uploaded file once
+        data = file.read()
+        write_point_cloud(sourcePath, ContentFile(data))
         pcd_source = o3d.io.read_point_cloud(sourcePath)
         highest_result = 0
-        for file in os.listdir(os.path.join(settings.MEDIA_ROOT, authorization)):
-            if file == "source.ply" or file == "uploaded.ply":
+        for file_name in os.listdir(os.path.join(settings.MEDIA_ROOT, authorization)):
+            if file_name == "source.ply" or file_name == "uploaded.ply":
                 continue
-            target = os.path.join(settings.MEDIA_ROOT, authorization, file)
+            target = os.path.join(settings.MEDIA_ROOT, authorization, file_name)
             pcd_target = o3d.io.read_point_cloud(target)
-            if authMethod == "ICP":
+            if authMethod == AuthMethod.ICP:
                 threshold = 0.35
                 result = icp.execute_icp(pcd_source, pcd_target, threshold=threshold)
-            elif authMethod == "FGR":
+            elif authMethod == AuthMethod.FGR:
                 threshold = 0.32
                 result = icp.execute_icp(pcd_source, pcd_target, fast_registration=True, threshold=threshold)
-            elif authMethod == "PNLK":
+            elif authMethod == AuthMethod.PNLK:
                 threshold = 0.345
                 result = pointnetlk.execute_pointnetlk(pcd_source, pcd_target, threshold=threshold)
-            elif authMethod == "FMR":
+            elif authMethod == AuthMethod.FMR:
                 threshold = 0.35
                 result = fmr.execute_fmr(pcd_source, pcd_target, threshold=threshold)
-            elif authMethod == "DGMR":
+            elif authMethod == AuthMethod.DGMR:
                 threshold = 0.47
                 result = deepgmr.execute_deepgmr(pcd_source, pcd_target, threshold=threshold)
             highest_result = max(highest_result, result)
@@ -118,37 +164,59 @@ def authenticate(request):
         log_info(
             "authenticatePointCloud",
             extra={
-                "method": authMethod,
+                "method": str(authMethod),
                 "fitness": highest_result,
                 "threshold": threshold,
-                "authTime": authentication_time
-            }
+                "authTime": authentication_time,
+            },
         )
         return {"success": True, "fitness": highest_result}
     except Exception as e:
-        log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}"})
-        return {"error": "No registered point cloud."}
+        import traceback
+        tb = traceback.format_exc()
+        log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}", "traceback": tb})
+        return Response({"error": "No registered point cloud.", "detail": str(e)}, status=500)
     finally:
-        storage.delete(sourcePath)
+        try:
+            storage.delete(sourcePath)
+        except Exception:
+            pass
         delete_parent_directory(authorization)
 
-@router.post("/authenticate_two")
-def authenticate_two(request):
-    authorization = request.headers.get('Authorization')
-    authMethod = request.headers.get('AuthorizationMethod')
+@router.post(
+    "/authenticate-two",
+    response={200: AuthResult, 401: ErrorResponse, 400: ErrorResponse, 500: ErrorResponse},
+)
+def authenticate_two(
+    request,
+    authorization: str = Header(..., alias="U-Authorization"),
+    authMethod: Optional[AuthMethod] = Header(None, alias="AuthorizationMethod"),
+    file1: UploadedFile = File(...),
+    file2: UploadedFile = File(...),
+):
+    """Authenticate using two uploaded point cloud files.
+
+    Headers:
+    - U-Authorization: user folder name (required)
+    - AuthorizationMethod: optional, one of ICP, FGR, PNLK, FMR, DGMR
+
+    Form-data:
+    - file1: first .ply file
+    - file2: second .ply file
+    """
     if not authorization:
-        return {"error": "Unauthorized"}
-    if 'files' not in request.FILES or len(request.FILES.getlist('files')) != 2:
-        return {"error": "Invalid number of files were uploaded."}
+        return Response({"error": "Unauthorized", "detail": ""}, status=401)
     if not authMethod:
         authMethod = "ICP"
+
     start = time()
-    files = request.FILES.getlist('files')
     storage = OverwriteStorage()
     sourcePath = os.path.join(settings.MEDIA_ROOT, authorization, "sourceFile.ply")
     targetPath = os.path.join(settings.MEDIA_ROOT, authorization, "targetFile.ply")
-    write_point_cloud(sourcePath, ContentFile(files[0].read()))
-    write_point_cloud(targetPath, ContentFile(files[1].read()))
+
+    # write uploaded files to disk
+    write_point_cloud(sourcePath, ContentFile(file1.read()))
+    write_point_cloud(targetPath, ContentFile(file2.read()))
     try:
         pcd_source = o3d.io.read_point_cloud(sourcePath)
         pcd_target = o3d.io.read_point_cloud(targetPath)
@@ -179,8 +247,10 @@ def authenticate_two(request):
         )
         return {"success": True, "fitness": result}
     except Exception as e:
-        log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}"})
-        return {"error": "No registered point cloud."}
+        import traceback
+        tb = traceback.format_exc()
+        log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}", "traceback": tb})
+        return Response({"error": "No registered point cloud.", "detail": str(e)}, status=500)
     finally:
         storage.delete(sourcePath)
         storage.delete(targetPath)

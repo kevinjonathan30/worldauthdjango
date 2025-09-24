@@ -49,7 +49,7 @@ def send_log(event: str, level: str = None, extra: dict = None):
             headers={"Content-Type": "application/json"}
         )
         response.raise_for_status()  # Will raise an exception for HTTP errors
-        print(f"Log successfully sent: {event}")
+        print(f"Log successfully sent: {event} {extra_string}")
     except requests.exceptions.RequestException as e:
         print(f"Failed to send log: {e}")
 
