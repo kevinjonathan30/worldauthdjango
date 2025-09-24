@@ -18,9 +18,10 @@ from django.conf import settings
 from django.conf.urls.static import static
 from django.contrib import admin
 from django.urls import include, path
+from authentication.ninja_api import api
 
 urlpatterns = [
-    path("api/", include("authentication.urls")),
+    path("api/", api.urls),
     path("worldauth-admin/", admin.site.urls),
 ]
 
