@@ -1,5 +1,6 @@
 from ninja import Router, File, UploadedFile, Header
 from ninja.responses import Response
+from ninja.errors import HttpError
 from typing import Optional
 from .schemas import (
     PointCloudList,
@@ -45,12 +46,11 @@ def get_point_cloud(request, authorization: str = Header(..., alias="U-Authoriza
         pcd_list = os.listdir(user_folder)
         return Response({"success": True, "data": pcd_list}, status=200)
     except Exception as e:
-        # Log full exception and return the error text temporarily to help debugging.
         import traceback
         tb = traceback.format_exc()
         log_error("getPointCloud", extra={"message": f"Failed to list point clouds: {e}", "traceback": tb})
-        # Return the exception message in the response temporarily so Postman shows the real error.
-        return Response({"error": "Failed to list point clouds.", "detail": str(e)}, status=500)
+        # Raise an HTTP 500 with standardized ErrorResponse body
+        raise HttpError(500, {"error": "Failed to list point clouds.", "detail": str(e)})
 
 @router.delete(
     "/delete-point-cloud",
@@ -74,7 +74,7 @@ def delete_point_cloud(request, authorization: str = Header(..., alias="U-Author
         import traceback
         tb = traceback.format_exc()
         log_error("deletePointCloud", extra={"message": f"Failed to delete point cloud: {e}", "traceback": tb})
-        return Response({"error": "Failed to delete Point Cloud.", "detail": str(e)}, status=500)
+        raise HttpError(500, {"error": "Failed to delete Point Cloud.", "detail": str(e)})
 
 @router.post(
     "/register",
@@ -101,7 +101,7 @@ def register(request, authorization: str = Header(..., alias="U-Authorization"),
         import traceback
         tb = traceback.format_exc()
         log_error("registerPointCloud", extra={"message": f"Failed to register point cloud: {e}", "traceback": tb})
-        return Response({"error": "Failed to register Point Cloud.", "detail": str(e)}, status=500)
+        raise HttpError(500, {"error": "Failed to register Point Cloud.", "detail": str(e)})
 
 @router.post(
     "/authenticate",
@@ -123,7 +123,7 @@ def authenticate(
     - file: .ply file to authenticate
     """
     if not authorization:
-        return Response({"error": "Unauthorized", "detail": ""}, status=401)
+        raise HttpError(401, {"error": "Unauthorized", "detail": None})
     if not authMethod:
         authMethod = AuthMethod.ICP
 
@@ -175,7 +175,7 @@ def authenticate(
         import traceback
         tb = traceback.format_exc()
         log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}", "traceback": tb})
-        return Response({"error": "No registered point cloud.", "detail": str(e)}, status=500)
+        raise HttpError(500, {"error": "Authentication failed.", "detail": str(e)})
     finally:
         try:
             storage.delete(sourcePath)
@@ -184,10 +184,10 @@ def authenticate(
         delete_parent_directory(authorization)
 
 @router.post(
-    "/authenticate-two",
+    "/authenticate-two-point-clouds",
     response={200: AuthResult, 401: ErrorResponse, 400: ErrorResponse, 500: ErrorResponse},
 )
-def authenticate_two(
+def authenticate_two_point_clouds(
     request,
     authorization: str = Header(..., alias="U-Authorization"),
     authMethod: Optional[AuthMethod] = Header(None, alias="AuthorizationMethod"),
@@ -205,7 +205,7 @@ def authenticate_two(
     - file2: second .ply file
     """
     if not authorization:
-        return Response({"error": "Unauthorized", "detail": ""}, status=401)
+        raise HttpError(401, {"error": "Unauthorized", "detail": None})
     if not authMethod:
         authMethod = "ICP"
 
@@ -250,7 +250,7 @@ def authenticate_two(
         import traceback
         tb = traceback.format_exc()
         log_error("authenticatePointCloud", extra={"message": f"Authentication failed: {e}", "traceback": tb})
-        return Response({"error": "No registered point cloud.", "detail": str(e)}, status=500)
+        raise HttpError(500, {"error": "Authentication failed.", "detail": str(e)})
     finally:
         storage.delete(sourcePath)
         storage.delete(targetPath)
