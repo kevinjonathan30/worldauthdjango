@@ -209,7 +209,7 @@ def authenticate_two_point_clouds(
     if not authMethod:
         authMethod = "ICP"
 
-    start = time()
+    write_start = time()
     storage = OverwriteStorage()
     sourcePath = os.path.join(settings.MEDIA_ROOT, authorization, "sourceFile.ply")
     targetPath = os.path.join(settings.MEDIA_ROOT, authorization, "targetFile.ply")
@@ -217,9 +217,13 @@ def authenticate_two_point_clouds(
     # write uploaded files to disk
     write_point_cloud(sourcePath, ContentFile(file1.read()))
     write_point_cloud(targetPath, ContentFile(file2.read()))
+    write_end = time()
     try:
+        read_start = time()
         pcd_source = o3d.io.read_point_cloud(sourcePath)
         pcd_target = o3d.io.read_point_cloud(targetPath)
+        read_end = time()
+        auth_start = time()
         if authMethod == "ICP":
             threshold = 0.35
             result = icp.execute_icp(pcd_source, pcd_target, threshold=threshold)
@@ -235,14 +239,17 @@ def authenticate_two_point_clouds(
         elif authMethod == "DGMR":
             threshold = 0.47
             result = deepgmr.execute_deepgmr(pcd_source, pcd_target, threshold=threshold)
-        authentication_time = time() - start
+        auth_end = time()
         log_info(
             "authenticatePointCloud",
             extra={
                 "method": authMethod,
                 "fitness": result,
                 "threshold": threshold,
-                "authTime": authentication_time
+                "authTime": auth_end - auth_start,
+                "readTime": read_end - read_start,
+                "writeTime": write_end - write_start,
+                "totalTime": (auth_end - write_start),
             }
         )
         return {"success": True, "fitness": result}
