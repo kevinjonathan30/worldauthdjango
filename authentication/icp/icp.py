@@ -1,4 +1,5 @@
 import open3d as o3d  # Open3D ライブラリ (Library)
+from profiling_decorator import profile
 
 # icp-based 3D authentication based on Open3D 0.15.2
 #
@@ -12,6 +13,7 @@ import open3d as o3d  # Open3D ライブラリ (Library)
 #
 # このコードは、2つの点群データセット（`test2.pcd` と `test3.pcd`）を入力として受け取り、それらを適切に位置合わせます。
 
+@profile
 def execute_icp(source, target, fast_registration=False, threshold=0.7):
     # Assume source and target are already open3d.geometry.PointCloud objects
 
