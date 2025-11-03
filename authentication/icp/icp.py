@@ -14,26 +14,19 @@ from profiling_decorator import profile
 # このコードは、2つの点群データセット（`test2.pcd` と `test3.pcd`）を入力として受け取り、それらを適切に位置合わせます。
 
 @profile
-def execute_icp(source, target, fast_registration=False, threshold=0.7):
-    # Assume source and target are already open3d.geometry.PointCloud objects
+def execute_icp(source, target, fast_registration=False, threshold=0.7, fgr_config=None):
+    voxel_size = 0.1  # 10cm for this dataset
 
-    voxel_size = 0.1  # このデータセットに対して10cmを意味します (Means 10cm for this dataset)
-    
-    # 点群の外れ値を除去 (Remove outliers from the source and target point clouds)
     source, _ = remove_outlier(source)
     target, _ = remove_outlier(target)
 
-    # 法線推定 (Estimate normals)
-    estimate_normals(source, voxel_size)
-    estimate_normals(target, voxel_size)
-    
-    # データセットの準備 (Prepare datasets)
     source_down, target_down, source_fpfh, target_fpfh = prepare_dataset(voxel_size, source, target)
 
-    # 初期位置合わせを実行 (Perform initial alignment)
     if fast_registration:
         print("Initial alignment with Fast Global Registration")
-        result = execute_fast_global_registration(source_down, target_down, source_fpfh, target_fpfh, voxel_size)
+
+        # Pass fgr_config here:
+        result = execute_fast_global_registration(source_down, target_down, source_fpfh, target_fpfh, voxel_size, fgr_config=fgr_config)
     else:
         print("Initial alignment with RANSAC")
         result = execute_global_registration(source_down, target_down, source_fpfh, target_fpfh, voxel_size)
@@ -42,30 +35,20 @@ def execute_icp(source, target, fast_registration=False, threshold=0.7):
     evaluation = o3d.pipelines.registration.evaluate_registration(source, target, threshold, trans_init)
     print(evaluation)
 
-    # 点対面ICPを適用 (Apply point-to-plane ICP)
     print("Now, applying the point-to-plane ICP")
 
     try:
         reg_p2l = o3d.pipelines.registration.TransformationEstimationPointToPlane()
         reg_p2l_result = o3d.pipelines.registration.registration_icp(
-            source, target, threshold, trans_init, reg_p2l)
+            source_down, target_down, threshold, trans_init, reg_p2l)
         print(reg_p2l_result)
         print("Transformation is:")
         print(reg_p2l_result.transformation)
     except Exception as e:
         print(f"ICP alignment failed: {e}")
-        return None
+        return 0
 
     return reg_p2l_result.fitness
-
-# 点群データの法線を推定する関数 (Function to estimate normals for a point cloud)
-def estimate_normals(pcd, voxel_size):
-    radius_normal = voxel_size * 2
-    # Estimate normals first
-    pcd.estimate_normals(o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
-    # Ensure normals are computed before orienting
-    if pcd.has_normals() and len(pcd.normals) > 0:
-        pcd.orient_normals_consistent_tangent_plane(100)
 
 # 点群データの前処理関数 (Preprocessing function for point cloud data)
 def preprocess_point_cloud(pcd, voxel_size):
@@ -78,6 +61,7 @@ def preprocess_point_cloud(pcd, voxel_size):
     print(f":: Estimate normal with search radius {radius_normal:.3f}.")
     pcd_down.estimate_normals(
         o3d.geometry.KDTreeSearchParamHybrid(radius=radius_normal, max_nn=30))
+    pcd_down.orient_normals_consistent_tangent_plane(100)
 
     # FPFH 特徴量計算 (FPFH feature calculation)
     radius_feature = voxel_size * 5
@@ -91,7 +75,7 @@ def preprocess_point_cloud(pcd, voxel_size):
 def prepare_dataset(voxel_size, source, target):
     # 2つの点群データの読み込みと初期姿勢の変更 (Load two point cloud data and change the initial orientation)
     print(":: Load two point clouds and disturb initial pose.")
-
+    
     # 前処理の適用 (Apply preprocessing)
     source_down, source_fpfh = preprocess_point_cloud(source, voxel_size)
     target_down, target_fpfh = preprocess_point_cloud(target, voxel_size)
@@ -124,14 +108,49 @@ def execute_global_registration(source_down, target_down, source_fpfh, target_fp
     return result
 
 # 高速グローバルレジストレーション実行 (Execute fast global registration)
-def execute_fast_global_registration(source_down, target_down, source_fpfh, target_fpfh, voxel_size):
-    distance_threshold = voxel_size * 1.5
+def execute_fast_global_registration(source_down, target_down, source_fpfh, target_fpfh, voxel_size, fgr_config=None):
+    # Set defaults
+    distance_threshold = voxel_size * 1.1
+    iteration_number = 512
+    maximum_tuple_count = 1534
+    tuple_scale = 0.98
+    use_absolute_scale = False
+    decrease_mu = True
+    tuple_test = True
+    division_factor = 1.01
+
+    # Override defaults if fgr_config provided
+    if fgr_config:
+        distance_threshold = voxel_size * fgr_config.get('distance_multiplier', 1.1)
+        iteration_number = fgr_config.get('iteration_number', iteration_number)
+        maximum_tuple_count = fgr_config.get('maximum_tuple_count', maximum_tuple_count)
+        tuple_scale = fgr_config.get('tuple_scale', tuple_scale)  # optional, you can add it to config if needed
+        use_absolute_scale = fgr_config.get('use_absolute_scale', use_absolute_scale)
+        decrease_mu = fgr_config.get('decrease_mu', decrease_mu)
+        tuple_test = fgr_config.get('tuple_test', tuple_test)
+        division_factor = fgr_config.get('division_factor', division_factor)
+
     print(f":: Apply fast global registration with distance threshold {distance_threshold:.3f}")
+    print(f"FGR params: iteration_number={iteration_number}, maximum_tuple_count={maximum_tuple_count}, division_factor={division_factor}")
+
+    option = o3d.pipelines.registration.FastGlobalRegistrationOption(
+        maximum_correspondence_distance=distance_threshold,
+        iteration_number=iteration_number,
+        maximum_tuple_count=maximum_tuple_count,
+        tuple_scale=tuple_scale,
+        use_absolute_scale=use_absolute_scale,
+        decrease_mu=decrease_mu,
+        tuple_test=tuple_test,
+        division_factor=division_factor
+    )
+
     result = o3d.pipelines.registration.registration_fgr_based_on_feature_matching(
-        source_down, target_down, source_fpfh, target_fpfh,
-        o3d.pipelines.registration.FastGlobalRegistrationOption(
-            maximum_correspondence_distance=distance_threshold))
+        source_down, target_down,
+        source_fpfh, target_fpfh,
+        option
+    )
     return result
+
 
 # 点群の外れ値を除去する関数 (Function to remove outliers from point cloud)
 def remove_outlier(cloud):

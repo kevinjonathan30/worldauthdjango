@@ -225,19 +225,19 @@ def authenticate_two_point_clouds(
         read_end = time()
         auth_start = time()
         if authMethod == "ICP":
-            threshold = 0.35
+            threshold = 0.1
             result = icp.execute_icp(pcd_source, pcd_target, threshold=threshold)
         elif authMethod == "FGR":
-            threshold = 0.32
+            threshold = 0.18
             result = icp.execute_icp(pcd_source, pcd_target, fast_registration=True, threshold=threshold)
         elif authMethod == "PNLK":
-            threshold = 0.345
+            threshold = 0.37
             result = pointnetlk.execute_pointnetlk(pcd_source, pcd_target, threshold=threshold)
         elif authMethod == "FMR":
-            threshold = 0.35
+            threshold = 0.24
             result = fmr.execute_fmr(pcd_source, pcd_target, threshold=threshold)
         elif authMethod == "DGMR":
-            threshold = 0.47
+            threshold = 0.32
             result = deepgmr.execute_deepgmr(pcd_source, pcd_target, threshold=threshold)
         auth_end = time()
         log_info(
