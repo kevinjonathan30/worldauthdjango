@@ -226,18 +226,23 @@ def authenticate_two_point_clouds(
         auth_start = time()
         if authMethod == "ICP":
             threshold = 0.1
+            fitness_boundary = 0.4
             result = icp.execute_icp(pcd_source, pcd_target, threshold=threshold)
         elif authMethod == "FGR":
             threshold = 0.18
+            fitness_boundary = 0.4
             result = icp.execute_icp(pcd_source, pcd_target, fast_registration=True, threshold=threshold)
         elif authMethod == "PNLK":
             threshold = 0.37
+            fitness_boundary = 0.4
             result = pointnetlk.execute_pointnetlk(pcd_source, pcd_target, threshold=threshold)
         elif authMethod == "FMR":
             threshold = 0.24
+            fitness_boundary = 0.5
             result = fmr.execute_fmr(pcd_source, pcd_target, threshold=threshold)
         elif authMethod == "DGMR":
             threshold = 0.32
+            fitness_boundary = 0.4
             result = deepgmr.execute_deepgmr(pcd_source, pcd_target, threshold=threshold)
         auth_end = time()
         log_info(
@@ -252,7 +257,7 @@ def authenticate_two_point_clouds(
                 "totalTime": (auth_end - write_start),
             }
         )
-        return {"success": True, "fitness": result}
+        return {"success": result >= fitness_boundary, "fitness": result}
     except Exception as e:
         import traceback
         tb = traceback.format_exc()
