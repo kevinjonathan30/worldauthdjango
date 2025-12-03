@@ -2,8 +2,8 @@ import requests
 import time
 import json 
 
-USER_ID = 0000000  
-API_KEY = "XXX"  
+USER_ID = 0  
+API_KEY = "REMOVED"  
 
 def send_log(event: str, level: str = None, extra: dict = None):
     """
