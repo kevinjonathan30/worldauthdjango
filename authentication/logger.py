@@ -1,9 +1,10 @@
+import os
 import requests
 import time
 import json 
 
-USER_ID = 0  
-API_KEY = "REMOVED"  
+USER_ID = os.environ.get('GRAFANA_USER_ID', '')  
+API_KEY = os.environ.get('GRAFANA_API_KEY', '')  
 
 def send_log(event: str, level: str = None, extra: dict = None):
     """
