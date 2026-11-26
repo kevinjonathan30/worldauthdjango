@@ -12,6 +12,6 @@ profiling-decorator==0.0.6
 protobuf==5.28.2
 Requests==2.32.3
 scipy==1.14.1
-six==1.16.0
+six==1.17.0
 torch==2.2.2
 transforms3d==0.4.2
