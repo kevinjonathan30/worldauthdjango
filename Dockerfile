@@ -1,5 +1,5 @@
 # Use a Python image with OpenGL libraries pre-installed
-FROM nvidia/opengl:1.0-glvnd-runtime-ubuntu22.04
+FROM nvidia/opengl:1.2-glvnd-runtime-ubuntu22.04
 
 # Install Python 3.10 and pip
 RUN apt-get update && apt-get install -y python3 python3-pip
