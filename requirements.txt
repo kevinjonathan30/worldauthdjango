@@ -7,7 +7,7 @@ ipdb==0.13.13
 matplotlib==3.9.2
 numpy<2.0
 open3d==0.18.0
-plyfile==1.1
+plyfile==1.1.5
 profiling-decorator==0.0.6
 protobuf==5.28.2
 Requests==2.32.3
